@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Watch Together</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#071025;
+  --card:#071426;
+  --muted:#9fb0c8;
+  --accent:#4f9ef8;
+  --accent-2:#7dd3fc;
+  --surface:#0b1a2a;
+  --glass:rgba(255,255,255,0.03);
+}
+
+/* Grid layout: sidebar + main */
+.layout{
+	display:grid;grid-template-columns:360px 1fr;gap:20px;align-items:start;max-width:1200px;margin:0 auto;width:100%;
+}
+.panel{background:linear-gradient(180deg,var(--card),var(--surface));padding:18px;border-radius:12px;box-shadow:0 8px 30px rgba(2,6,23,0.6);border:1px solid rgba(255,255,255,0.03)}
+.room{width:100%}
+.player-wrap{width:100%}
+
+/* Плеер адаптивный: используем aspect-ratio */
+#playerContainer{width:100%;background:#000;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,0.04)}
+#playerContainer .player-inner{position:relative;width:100%;aspect-ratio:16/9;background:#000}
+#playerContainer video, #playerContainer iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+
+/* Элементы формы */
+input[type="text"], input[type="file"], input, button, select, textarea{padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:var(--glass);color:var(--muted);width:100%;outline:none}
+input::placeholder{color:rgba(223,235,248,0.4)}
+button{cursor:pointer;background:linear-gradient(180deg,var(--accent),#2c7be5);color:white;font-weight:600;border:none}
+button.primary{padding:10px 14px}
+button.secondary{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted);font-weight:600}
+button:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(79,158,248,0.12)}
+
+.controls{display:flex;gap:8px;margin-top:12px;align-items:center;flex-wrap:wrap}
+.controls button{padding:8px 12px;border-radius:8px}
+.controls .time-label{font-size:13px;color:var(--muted);margin-left:8px}
+
+.chat{height:300px;width:100%;overflow:auto;background:linear-gradient(180deg,rgba(255,255,255,0.01),rgba(255,255,255,0.02));padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.02)}
+.chat .message{padding:10px 12px;border-radius:8px;background:rgba(255,255,255,0.02);margin-bottom:10px;color:#d7eefc}
+
+.small{font-size:13px;color:var(--muted)}
+.muted{color:var(--muted)}
+
+/* Large screens: center layout */
+@media (min-width:1201px){
+	.layout{max-width:1400px}
+}
+
+/* Medium screens: slightly narrower sidebar */
+@media (max-width:1199px){
+	.layout{grid-template-columns:320px 1fr;padding:0 12px}
+}
+
+/* Tablets and small desktops: stack vertically */
+@media (max-width:900px){
+	.layout{grid-template-columns:1fr;gap:14px;padding:0 12px}
+	#playerContainer .player-inner{aspect-ratio:16/9}
+	.chat{height:220px}
+}
+
+/* Mobile: touch-friendly targets */
+@media (max-width:600px){
+	body{padding:12px}
+	#playerContainer .player-inner{aspect-ratio:16/9}
+	.controls{gap:6px}
+	button{font-size:15px;padding:12px 14px;border-radius:10px}
+	.controls button{flex:1;min-width:44px}
+	.chat{height:180px}
+}
+
+/* Floating camera widget styles */
+.floating-cam{position:fixed;right:18px;bottom:18px;width:340px;height:190px;z-index:2147483647;border-radius:12px;background:linear-gradient(180deg,rgba(0,0,0,0.6),rgba(0,0,0,0.45));box-shadow:0 12px 40px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.04);resize:both;overflow:hidden;display:flex;flex-direction:column}
+.floating-cam.pin{cursor:default}
+.floating-cam .fc-header{cursor:grab;padding:6px 8px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));display:flex;align-items:center;justify-content:space-between;color:var(--muted);font-size:13px}
+.floating-cam .fc-body{flex:1;display:flex;gap:6px;padding:6px}
+.floating-cam .fc-body video{width:50%;height:100%;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,0.03)}
+.floating-cam .fc-footer{padding:6px;display:flex;gap:6px;align-items:center;justify-content:center}
+.floating-cam.hide{display:none}
+
+</style>
+</head>
+<body>
+<div class="layout">
+<div class="panel room">
+<h3>Создать/войти в комнату</h3>
+<label>Room ID<br/><input id="roomId" placeholder="любая строка, напр. qwerty"/></label>
+<div style="margin-top:8px">
+<label>Ссылка на видео (mp4, HLS .m3u8 или YouTube)<br/><input id="videoUrl" placeholder="https://..." style="width:100%"/></label>
+</div>
+<div style="margin-top:8px">
+<label>Локальный файл (mp4, webm и др.)<br/><input id="videoFile" type="file" accept="video/*,.m3u8"/></label>
+<p style="font-size:12px;color:#9fb0c8;margin-top:6px">Локальные файлы воспроизводятся только на вашем компьютере. Чтобы поделиться видео с участниками — используйте публичную ссылку.</p>
+</div>
+<div class="controls">
+<button id="createBtn">Создать / Войти</button>
+<button id="copyInvite">Копировать приглашение</button>
+</div>
+<p style="font-size:13px;color:#9fb0c8;margin-top:8px">Поделись ссылкой с тем, вместе с кем хочешь посмотреть фильм.</p>
+</div>
+
+
+<div class="panel player-wrap">
+<div id="playerContainer">
+	<div class="player-inner" id="playerInner"><!-- сюда подгрузится video или iframe --></div>
+</div>
+
+
+<div class="controls" style="margin-top:12px;justify-content:center;align-items:center">
+	<button id="seekBack" class="secondary">⏪</button>
+	<button id="playPause" class="primary" style="margin:0 12px;font-size:20px;padding:12px 18px">▶️</button>
+	<button id="seekFwd" class="secondary">⏩</button>
+	<label class="time-label">Время: <span id="time">0</span>s</label>
+</div>
+
+
+<div style="margin-top:12px">
+<div class="chat" id="chatBox"></div>
+<div style="display:flex;gap:8px;margin-top:8px;align-items:stretch">
+<textarea id="chatMsg" placeholder="Напиши сообщение..." style="flex:1;min-height:46px;padding:10px;border-radius:8px"></textarea>
+<button id="sendMsg" style="padding:10px 14px">Отправить</button>
+</div>
+</div>
+</div>
+</div>
+
+<div id="floatingCam" class="floating-cam" aria-label="Видеокамера">
+		<div class="fc-header" id="camHeader"><span id="camTitle">Камера</span><div style="display:flex;gap:6px"><button id="pipBtn" class="secondary" title="Вывести в отдельное окно">🗔</button><button id="pinCam" class="secondary" title="Закрепить">📌</button><button id="closeCam" class="secondary" title="Отключить">✖</button></div></div>
+	<div class="fc-body">
+		<video id="localVideo" autoplay muted playsinline></video>
+		<video id="remoteVideo" autoplay playsinline></video>
+	</div>
+	<div class="fc-footer">
+		<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)"><input type="checkbox" id="autoPip"/> Авто PiP при fullscreen</label>
+		<div style="flex:1"></div>
+		<button id="toggleCam" class="primary">Включить камеру</button>
+	</div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<!-- hls.js для воспроизведения HLS (.m3u8) в неподдерживающих браузерах -->
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.1/dist/hls.min.js"></script>
+<!-- YouTube IFrame API для управления встроенными YouTube-видео -->
+<script src="https://www.youtube.com/iframe_api"></script>
+<script src="client.js"></script>
+</body>
+</html>
