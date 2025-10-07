@@ -1,152 +1,1144 @@
 <!doctype html>
 <html lang="ru">
+
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Watch Together</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-<style>
-:root{
-  --bg:#071025;
-  --card:#071426;
-  --muted:#9fb0c8;
-  --accent:#4f9ef8;
-  --accent-2:#7dd3fc;
-  --surface:#0b1a2a;
-  --glass:rgba(255,255,255,0.03);
-}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5" />
+    <title>Watch Together</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #12161f;
+            --bg-tertiary: #1a1f2e;
+            --card-bg: linear-gradient(135deg, rgba(26, 31, 46, 0.95), rgba(18, 22, 31, 0.98));
+            --text-primary: #e8f0fe;
+            --text-secondary: #9ca9c0;
+            --text-muted: #6b7890;
+            --accent-primary: #5b8def;
+            --accent-secondary: #7dd3fc;
+            --accent-gradient: linear-gradient(135deg, #5b8def, #7dd3fc);
+            --success: #10b981;
+            --danger: #ef4444;
+            --border: rgba(255, 255, 255, 0.08);
+            --border-light: rgba(255, 255, 255, 0.04);
+            --glass: rgba(255, 255, 255, 0.04);
+            --glass-hover: rgba(255, 255, 255, 0.08);
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+            --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.4);
+            --shadow-accent: 0 8px 24px rgba(91, 141, 239, 0.2);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+        }
 
-/* Grid layout: sidebar + main */
-.layout{
-	display:grid;grid-template-columns:360px 1fr;gap:20px;align-items:start;max-width:1200px;margin:0 auto;width:100%;
-}
-.panel{background:linear-gradient(180deg,var(--card),var(--surface));padding:18px;border-radius:12px;box-shadow:0 8px 30px rgba(2,6,23,0.6);border:1px solid rgba(255,255,255,0.03)}
-.room{width:100%}
-.player-wrap{width:100%}
+        * {
+            box-sizing: border-box;
+        }
 
-/* Плеер адаптивный: используем aspect-ratio */
-#playerContainer{width:100%;background:#000;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,0.04)}
-#playerContainer .player-inner{position:relative;width:100%;aspect-ratio:16/9;background:#000}
-#playerContainer video, #playerContainer iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+        body {
+            margin: 0;
+            padding: 0;
+            background: 
+                radial-gradient(ellipse 1400px 900px at 20% 0%, rgba(91, 141, 239, 0.12), transparent 50%),
+                radial-gradient(ellipse 1000px 800px at 80% 100%, rgba(125, 211, 252, 0.08), transparent 50%),
+                linear-gradient(180deg, var(--bg-primary), var(--bg-secondary));
+            background-attachment: fixed;
+            color: var(--text-primary);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            font-size: 15px;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow-x: hidden;
+        }
 
-/* Элементы формы */
-input[type="text"], input[type="file"], input, button, select, textarea{padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:var(--glass);color:var(--muted);width:100%;outline:none}
-input::placeholder{color:rgba(223,235,248,0.4)}
-button{cursor:pointer;background:linear-gradient(180deg,var(--accent),#2c7be5);color:white;font-weight:600;border:none}
-button.primary{padding:10px 14px}
-button.secondary{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted);font-weight:600}
-button:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(79,158,248,0.12)}
+        /* Layout */
+        .layout {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
 
-.controls{display:flex;gap:8px;margin-top:12px;align-items:center;flex-wrap:wrap}
-.controls button{padding:8px 12px;border-radius:8px}
-.controls .time-label{font-size:13px;color:var(--muted);margin-left:8px}
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 16px;
+        }
 
-.chat{height:300px;width:100%;overflow:auto;background:linear-gradient(180deg,rgba(255,255,255,0.01),rgba(255,255,255,0.02));padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.02)}
-.chat .message{padding:10px 12px;border-radius:8px;background:rgba(255,255,255,0.02);margin-bottom:10px;color:#d7eefc}
+        /* Panel/Card */
+        .panel {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            padding: 24px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
 
-.small{font-size:13px;color:var(--muted)}
-.muted{color:var(--muted)}
+        .panel:hover {
+            border-color: var(--border);
+            box-shadow: var(--shadow-lg);
+        }
 
-/* Large screens: center layout */
-@media (min-width:1201px){
-	.layout{max-width:1400px}
-}
+        /* Player Section */
+        .player-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 16px 0;
+        }
 
-/* Medium screens: slightly narrower sidebar */
-@media (max-width:1199px){
-	.layout{grid-template-columns:320px 1fr;padding:0 12px}
-}
+        #playerContainer {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background: #000;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+            margin-bottom: 16px;
+        }
 
-/* Tablets and small desktops: stack vertically */
-@media (max-width:900px){
-	.layout{grid-template-columns:1fr;gap:14px;padding:0 12px}
-	#playerContainer .player-inner{aspect-ratio:16/9}
-	.chat{height:220px}
-}
+        .player-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: #000;
+        }
 
-/* Mobile: touch-friendly targets */
-@media (max-width:600px){
-	body{padding:12px}
-	#playerContainer .player-inner{aspect-ratio:16/9}
-	.controls{gap:6px}
-	button{font-size:15px;padding:12px 14px;border-radius:10px}
-	.controls button{flex:1;min-width:44px}
-	.chat{height:180px}
-}
+        #playerContainer video,
+        #playerContainer iframe {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+            object-fit: contain;
+        }
 
-/* Floating camera widget styles */
-.floating-cam{position:fixed;right:18px;bottom:18px;width:340px;height:190px;z-index:2147483647;border-radius:12px;background:linear-gradient(180deg,rgba(0,0,0,0.6),rgba(0,0,0,0.45));box-shadow:0 12px 40px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.04);resize:both;overflow:hidden;display:flex;flex-direction:column}
-.floating-cam.pin{cursor:default}
-.floating-cam .fc-header{cursor:grab;padding:6px 8px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));display:flex;align-items:center;justify-content:space-between;color:var(--muted);font-size:13px}
-.floating-cam .fc-body{flex:1;display:flex;gap:6px;padding:6px}
-.floating-cam .fc-body video{width:50%;height:100%;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,0.03)}
-.floating-cam .fc-footer{padding:6px;display:flex;gap:6px;align-items:center;justify-content:center}
-.floating-cam.hide{display:none}
+        /* Controls */
+        .controls-overlay {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            background: rgba(10, 14, 26, 0.85);
+            backdrop-filter: blur(12px) saturate(180%);
+            padding: 12px 20px;
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-md);
+            margin: 0 auto;
+            max-width: 600px;
+        }
 
-</style>
+        .controls-overlay button {
+            min-width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .time-display {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-variant-numeric: tabular-nums;
+            margin-left: 4px;
+        }
+
+        /* Buttons */
+        button {
+            position: relative;
+            padding: 10px 20px;
+            border: none;
+            border-radius: var(--radius-md);
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            outline: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        button.primary {
+            background: var(--accent-gradient);
+            color: white;
+            box-shadow: var(--shadow-accent);
+        }
+
+        button.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(91, 141, 239, 0.3);
+        }
+
+        button.primary:active {
+            transform: translateY(0);
+        }
+
+        button.secondary {
+            background: var(--glass);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-light);
+        }
+
+        button.secondary:hover {
+            background: var(--glass-hover);
+            color: var(--text-primary);
+            border-color: var(--border);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* Input Fields */
+        input[type="text"],
+        input[type="file"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--glass);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 15px;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        input::placeholder,
+        textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        input:focus,
+        textarea:focus,
+        select:focus {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(91, 141, 239, 0.15);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        /* Labels */
+        label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        /* Chat */
+        .chat-section {
+            margin-top: 24px;
+        }
+
+        .chat {
+            height: 280px;
+            background: var(--glass);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            overflow-y: auto;
+            margin-bottom: 16px;
+        }
+
+        .chat::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chat::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .chat::-webkit-scrollbar-thumb {
+            background: var(--glass-hover);
+            border-radius: 4px;
+        }
+
+        .chat::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .message {
+            background: var(--glass);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            padding: 12px 16px;
+            margin-bottom: 12px;
+            animation: messageSlide 0.3s ease;
+        }
+
+        @keyframes messageSlide {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message strong {
+            color: var(--accent-secondary);
+            font-weight: 600;
+        }
+
+        .message-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* Room Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 16px;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            padding: 28px;
+            width: 100%;
+            max-width: 560px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+            animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 700;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .form-actions button {
+            flex: 1;
+            min-width: 140px;
+        }
+
+        .help-text {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 8px;
+            line-height: 1.5;
+        }
+
+        /* Floating Camera */
+        .floating-cam {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            width: 360px;
+            height: 200px;
+            background: var(--card-bg);
+            backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-width: 240px;
+            min-height: 140px;
+            transition: box-shadow 0.3s ease;
+            contain: layout style paint;
+        }
+
+        .floating-cam:hover {
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .floating-cam.hide {
+            display: none;
+        }
+
+        .floating-cam.max {
+            width: 640px !important;
+            height: 360px !important;
+        }
+
+        .fc-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid var(--border-light);
+            cursor: move;
+            user-select: none;
+            flex-shrink: 0;
+        }
+
+        .fc-header:active {
+            cursor: move;
+        }
+
+        .fc-header-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .fc-header-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .fc-header-actions button {
+            padding: 6px 8px;
+            font-size: 14px;
+            min-width: unset;
+            height: unset;
+        }
+
+        .fc-body {
+            flex: 1;
+            display: flex;
+            gap: 8px;
+            padding: 8px;
+            background: #000;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .fc-body video {
+            flex: 1;
+            width: 50%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-light);
+        }
+
+        .fc-footer {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-top: 1px solid var(--border-light);
+            flex-shrink: 0;
+        }
+
+        .fc-footer label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0;
+            font-size: 12px;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        .fc-footer input[type="checkbox"] {
+            width: auto;
+            cursor: pointer;
+        }
+
+        /* Room Button */
+        .room-button-container {
+            margin-top: 16px;
+        }
+
+        .room-button-container button {
+            width: 100%;
+            height: 52px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .container {
+                padding: 0 16px;
+            }
+
+            #playerContainer {
+                border-radius: var(--radius-md);
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                font-size: 14px;
+            }
+
+            .panel {
+                padding: 20px;
+            }
+
+            .modal-content {
+                padding: 24px;
+            }
+
+            .controls-overlay {
+                padding: 10px 16px;
+                gap: 10px;
+            }
+
+            .controls-overlay button {
+                min-width: 44px;
+                height: 44px;
+                font-size: 18px;
+            }
+
+            .time-display {
+                font-size: 13px;
+            }
+
+            .chat {
+                height: 240px;
+            }
+
+            .floating-cam {
+                width: 300px;
+                height: 170px;
+                right: 12px;
+                bottom: 12px;
+            }
+
+            .form-actions {
+                flex-direction: column;
+            }
+
+            .form-actions button {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .container {
+                padding: 0 12px;
+            }
+
+            .player-section {
+                padding: 12px 0;
+            }
+
+            #playerContainer {
+                border-radius: var(--radius-sm);
+                margin-bottom: 12px;
+            }
+
+            .controls-overlay {
+                padding: 8px 12px;
+                gap: 8px;
+                border-radius: var(--radius-lg);
+            }
+
+            .controls-overlay button {
+                min-width: 40px;
+                height: 40px;
+                font-size: 16px;
+            }
+
+            .time-display {
+                display: none;
+            }
+
+            button {
+                padding: 10px 16px;
+                font-size: 14px;
+            }
+
+            .chat {
+                height: 200px;
+                padding: 12px;
+            }
+
+            .message {
+                padding: 10px 12px;
+                font-size: 14px;
+            }
+
+            .modal-content {
+                padding: 20px;
+                border-radius: var(--radius-lg);
+            }
+
+            .modal-header h3 {
+                font-size: 20px;
+            }
+
+            .floating-cam {
+                width: calc(100vw - 24px);
+                height: 160px;
+                right: 12px;
+                bottom: 12px;
+                border-radius: var(--radius-md);
+            }
+
+            .fc-header-actions button {
+                padding: 4px 6px;
+                font-size: 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .panel {
+                padding: 16px;
+            }
+
+            .chat-section {
+                margin-top: 16px;
+            }
+
+            .message-input-group {
+                gap: 10px;
+            }
+
+            textarea {
+                min-height: 70px;
+            }
+
+            .room-button-container button {
+                height: 48px;
+            }
+
+            .floating-cam {
+                height: 140px;
+            }
+        }
+
+        @media (min-width: 1400px) {
+            .container {
+                max-width: 1400px;
+            }
+
+            #playerContainer {
+                border-radius: var(--radius-xl);
+            }
+        }
+
+        /* Touch device optimizations */
+        @media (hover: none) and (pointer: coarse) {
+            button {
+                min-height: 44px;
+            }
+
+            input[type="text"],
+            input[type="file"],
+            textarea {
+                font-size: 16px;
+            }
+        }
+
+        /* Landscape mobile optimization */
+        @media (max-width: 900px) and (orientation: landscape) {
+            #playerContainer {
+                aspect-ratio: 16 / 9;
+                max-height: 70vh;
+            }
+
+            .floating-cam {
+                width: 280px;
+                height: 140px;
+            }
+        }
+
+        /* High DPI screens */
+        @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+            body {
+                -webkit-font-smoothing: subpixel-antialiased;
+            }
+        }
+
+        /* Resize handles for floating camera */
+        .resize-handle {
+            position: absolute;
+            background: rgba(91, 141, 239, 0.3);
+            border: 1px solid rgba(91, 141, 239, 0.5);
+            border-radius: 3px;
+            z-index: 10;
+            transition: all 0.2s ease;
+        }
+
+        .resize-handle:hover {
+            background: rgba(91, 141, 239, 0.5);
+            border-color: var(--accent-primary);
+        }
+
+        .resize-handle:active {
+            background: var(--accent-primary);
+        }
+
+        .rh-right {
+            right: 0;
+            top: 0;
+            width: 8px;
+            height: 100%;
+            cursor: ew-resize;
+        }
+
+        .rh-bottom {
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 8px;
+            cursor: ns-resize;
+        }
+
+        .rh-corner {
+            right: 0;
+            bottom: 0;
+            width: 20px;
+            height: 20px;
+            cursor: nwse-resize;
+            border-bottom-right-radius: var(--radius-lg);
+        }
+        .text-muted {
+            color: var(--text-muted);
+        }
+
+        .text-small {
+            font-size: 13px;
+        }
+
+        .mt-4 {
+            margin-top: 16px;
+        }
+
+        .mb-4 {
+            margin-bottom: 16px;
+        }
+
+        .gap-2 {
+            gap: 8px;
+        }
+
+        .gap-3 {
+            gap: 12px;
+        }
+    </style>
 </head>
+
 <body>
-<div class="layout">
-<div class="panel room">
-<h3>Создать/войти в комнату</h3>
-<label>Room ID<br/><input id="roomId" placeholder="любая строка, напр. qwerty"/></label>
-<div style="margin-top:8px">
-<label>Ссылка на видео (mp4, HLS .m3u8 или YouTube)<br/><input id="videoUrl" placeholder="https://..." style="width:100%"/></label>
-</div>
-<div style="margin-top:8px">
-<label>Локальный файл (mp4, webm и др.)<br/><input id="videoFile" type="file" accept="video/*,.m3u8"/></label>
-<p style="font-size:12px;color:#9fb0c8;margin-top:6px">Локальные файлы воспроизводятся только на вашем компьютере. Чтобы поделиться видео с участниками — используйте публичную ссылку.</p>
-</div>
-<div class="controls">
-<button id="createBtn">Создать / Войти</button>
-<button id="copyInvite">Копировать приглашение</button>
-</div>
-<p style="font-size:13px;color:#9fb0c8;margin-top:8px">Поделись ссылкой с тем, вместе с кем хочешь посмотреть фильм.</p>
-</div>
+    <div class="layout">
+        <div class="player-section">
+            <div class="container">
+                <div id="playerContainer">
+                    <div class="player-inner" id="playerInner"></div>
+                </div>
 
+                <div class="controls-overlay">
+                    <button id="seekBack" class="secondary" aria-label="Перемотать назад">⏪</button>
+                    <button id="playPause" class="primary" aria-label="Воспроизвести/Пауза">▶️</button>
+                    <button id="seekFwd" class="secondary" aria-label="Перемотать вперед">⏩</button>
+                    <div class="time-display">
+                        <span>Время:</span>
+                        <span id="time">0</span>
+                        <span>сек</span>
+                    </div>
+                </div>
 
-<div class="panel player-wrap">
-<div id="playerContainer">
-	<div class="player-inner" id="playerInner"><!-- сюда подгрузится video или iframe --></div>
-</div>
+                <div class="chat-section">
+                    <div class="chat" id="chatBox"></div>
+                    <div class="message-input-group">
+                        <textarea id="chatMsg" placeholder="Напишите сообщение..." aria-label="Сообщение"></textarea>
+                        <button id="sendMsg" class="primary">Отправить</button>
+                    </div>
+                </div>
 
+                <div class="room-button-container">
+                    <button id="openRoom" class="primary">🎬 Управление комнатой</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<div class="controls" style="margin-top:12px;justify-content:center;align-items:center">
-	<button id="seekBack" class="secondary">⏪</button>
-	<button id="playPause" class="primary" style="margin:0 12px;font-size:20px;padding:12px 18px">▶️</button>
-	<button id="seekFwd" class="secondary">⏩</button>
-	<label class="time-label">Время: <span id="time">0</span>s</label>
-</div>
+    <!-- Room Modal -->
+    <div id="roomModal" class="modal-overlay" aria-hidden="true" role="dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Комната</h3>
+                <button id="closeRoom" class="secondary">✕</button>
+            </div>
 
+            <div class="form-group">
+                <label for="roomId">ID комнаты</label>
+                <input id="roomId" type="text" placeholder="Введите уникальный ID, например: movie-night-123" />
+            </div>
 
-<div style="margin-top:12px">
-<div class="chat" id="chatBox"></div>
-<div style="display:flex;gap:8px;margin-top:8px;align-items:stretch">
-<textarea id="chatMsg" placeholder="Напиши сообщение..." style="flex:1;min-height:46px;padding:10px;border-radius:8px"></textarea>
-<button id="sendMsg" style="padding:10px 14px">Отправить</button>
-</div>
-</div>
-</div>
-</div>
+            <div class="form-group">
+                <label for="videoUrl">Ссылка на видео</label>
+                <input id="videoUrl" type="text" placeholder="https://example.com/video.mp4 или YouTube ссылка" />
+                <p class="help-text">Поддерживаются: MP4, HLS (.m3u8), YouTube</p>
+            </div>
 
-<div id="floatingCam" class="floating-cam" aria-label="Видеокамера">
-		<div class="fc-header" id="camHeader"><span id="camTitle">Камера</span><div style="display:flex;gap:6px"><button id="pipBtn" class="secondary" title="Вывести в отдельное окно">🗔</button><button id="pinCam" class="secondary" title="Закрепить">📌</button><button id="closeCam" class="secondary" title="Отключить">✖</button></div></div>
-	<div class="fc-body">
-		<video id="localVideo" autoplay muted playsinline></video>
-		<video id="remoteVideo" autoplay playsinline></video>
-	</div>
-	<div class="fc-footer">
-		<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)"><input type="checkbox" id="autoPip"/> Авто PiP при fullscreen</label>
-		<div style="flex:1"></div>
-		<button id="toggleCam" class="primary">Включить камеру</button>
-	</div>
-</div>
+            <div class="form-group">
+                <label for="videoFile">Или загрузите локальный файл</label>
+                <input id="videoFile" type="file" accept="video/*,.m3u8" />
+                <p class="help-text">⚠️ Локальные файлы видны только вам. Для совместного просмотра используйте публичную ссылку.</p>
+            </div>
 
-<script src="/socket.io/socket.io.js"></script>
-<!-- hls.js для воспроизведения HLS (.m3u8) в неподдерживающих браузерах -->
-<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.1/dist/hls.min.js"></script>
-<!-- YouTube IFrame API для управления встроенными YouTube-видео -->
-<script src="https://www.youtube.com/iframe_api"></script>
-<script src="client.js"></script>
+            <div class="form-actions">
+                <button id="createBtn" class="primary">Создать / Войти</button>
+                <button id="copyInvite" class="secondary">📋 Копировать приглашение</button>
+                <button id="resetSaved" class="secondary">🔄 Сбросить данные</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Camera -->
+    <div id="floatingCam" class="floating-cam" aria-label="Видеокамера">
+        <div class="fc-header" id="camHeader">
+            <span class="fc-header-title" id="camTitle">📹 Камера</span>
+            <div class="fc-header-actions">
+                <button id="pipBtn" class="secondary" title="Картинка в картинке">🗔</button>
+                <button id="toggleSelf" class="secondary" title="Показать/скрыть себя">👤</button>
+                <button id="closeCam" class="secondary" title="Закрыть">✕</button>
+            </div>
+        </div>
+        <div class="fc-body">
+            <video id="localVideo" autoplay muted playsinline></video>
+            <video id="remoteVideo" autoplay playsinline></video>
+        </div>
+        <div class="fc-footer">
+            <div style="flex: 1;"></div>
+            <button id="toggleCam" class="primary">📷 Включить камеру</button>
+        </div>
+        <!-- Resize handles -->
+        <div class="resize-handle rh-right"></div>
+        <div class="resize-handle rh-bottom"></div>
+        <div class="resize-handle rh-corner"></div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.1/dist/hls.min.js"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script src="client.js"></script>
+
+    <script>
+        // Picture-in-Picture for floating camera
+        let pipWindow = null;
+        let isInPiP = false;
+
+        // Handle fullscreen changes
+        function handleFullscreenChange() {
+            const isFullscreen = !!(document.fullscreenElement || 
+                                   document.webkitFullscreenElement || 
+                                   document.mozFullScreenElement || 
+                                   document.msFullscreenElement);
+
+            const floatingCam = document.getElementById('floatingCam');
+            const remoteVideo = document.getElementById('remoteVideo');
+
+            if (isFullscreen && remoteVideo.srcObject) {
+                // Entering fullscreen - activate PiP if video is active
+                enterPictureInPicture();
+            } else if (!isFullscreen && isInPiP) {
+                // Exiting fullscreen - exit PiP
+                exitPictureInPicture();
+            }
+        }
+
+        async function enterPictureInPicture() {
+            const remoteVideo = document.getElementById('remoteVideo');
+            
+            if (!remoteVideo.srcObject || isInPiP) return;
+
+            try {
+                if (document.pictureInPictureEnabled) {
+                    await remoteVideo.requestPictureInPicture();
+                    isInPiP = true;
+                    
+                    remoteVideo.addEventListener('leavepictureinpicture', () => {
+                        isInPiP = false;
+                    }, { once: true });
+                }
+            } catch (err) {
+                console.log('PiP не поддерживается или недоступен:', err);
+            }
+        }
+
+        async function exitPictureInPicture() {
+            if (document.pictureInPictureElement) {
+                try {
+                    await document.exitPictureInPicture();
+                    isInPiP = false;
+                } catch (err) {
+                    console.log('Ошибка при выходе из PiP:', err);
+                }
+            }
+        }
+
+        // Listen for fullscreen changes
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+        document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+        // Manual PiP button
+        document.getElementById('pipBtn').addEventListener('click', async () => {
+            const remoteVideo = document.getElementById('remoteVideo');
+            
+            if (!remoteVideo.srcObject) {
+                alert('Сначала подключитесь к видеозвонку');
+                return;
+            }
+
+            if (isInPiP) {
+                await exitPictureInPicture();
+            } else {
+                await enterPictureInPicture();
+            }
+        });
+    </script>
+
+    <script>
+        // Dragging functionality for floating camera
+        const floatingCam = document.getElementById('floatingCam');
+        const camHeader = document.getElementById('camHeader');
+        
+        let isDragging = false;
+        let currentX;
+        let currentY;
+        let initialX;
+        let initialY;
+
+        camHeader.addEventListener('mousedown', dragStart);
+        camHeader.addEventListener('touchstart', dragStart);
+
+        function dragStart(e) {
+            if (e.target.closest('button')) return;
+            
+            if (e.type === 'touchstart') {
+                initialX = e.touches[0].clientX - floatingCam.offsetLeft;
+                initialY = e.touches[0].clientY - floatingCam.offsetTop;
+            } else {
+                initialX = e.clientX - floatingCam.offsetLeft;
+                initialY = e.clientY - floatingCam.offsetTop;
+            }
+
+            isDragging = true;
+            floatingCam.style.transition = 'none';
+
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('touchmove', drag);
+            document.addEventListener('mouseup', dragEnd);
+            document.addEventListener('touchend', dragEnd);
+        }
+
+        function drag(e) {
+            if (!isDragging) return;
+            
+            e.preventDefault();
+
+            if (e.type === 'touchmove') {
+                currentX = e.touches[0].clientX - initialX;
+                currentY = e.touches[0].clientY - initialY;
+            } else {
+                currentX = e.clientX - initialX;
+                currentY = e.clientY - initialY;
+            }
+
+            // Keep within viewport
+            const maxX = window.innerWidth - floatingCam.offsetWidth;
+            const maxY = window.innerHeight - floatingCam.offsetHeight;
+            
+            currentX = Math.max(0, Math.min(currentX, maxX));
+            currentY = Math.max(0, Math.min(currentY, maxY));
+
+            floatingCam.style.right = 'auto';
+            floatingCam.style.bottom = 'auto';
+            floatingCam.style.left = currentX + 'px';
+            floatingCam.style.top = currentY + 'px';
+        }
+
+        function dragEnd() {
+            isDragging = false;
+            floatingCam.style.transition = '';
+            
+            document.removeEventListener('mousemove', drag);
+            document.removeEventListener('touchmove', drag);
+            document.removeEventListener('mouseup', dragEnd);
+            document.removeEventListener('touchend', dragEnd);
+        }
+
+        // Resizing functionality
+        const resizeHandles = {
+            right: floatingCam.querySelector('.rh-right'),
+            bottom: floatingCam.querySelector('.rh-bottom'),
+            corner: floatingCam.querySelector('.rh-corner')
+        };
+
+        let isResizing = false;
+        let resizeType = null;
+        let startWidth, startHeight, startX, startY;
+
+        Object.entries(resizeHandles).forEach(([type, handle]) => {
+            handle.addEventListener('mousedown', (e) => resizeStart(e, type));
+            handle.addEventListener('touchstart', (e) => resizeStart(e, type));
+        });
+
+        function resizeStart(e, type) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            isResizing = true;
+            resizeType = type;
+            
+            startWidth = floatingCam.offsetWidth;
+            startHeight = floatingCam.offsetHeight;
+            startX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+            startY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+
+            floatingCam.style.transition = 'none';
+
+            document.addEventListener('mousemove', resize);
+            document.addEventListener('touchmove', resize);
+            document.addEventListener('mouseup', resizeEnd);
+            document.addEventListener('touchend', resizeEnd);
+        }
+
+        function resize(e) {
+            if (!isResizing) return;
+            
+            e.preventDefault();
+
+            const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+
+            const deltaX = clientX - startX;
+            const deltaY = clientY - startY;
+
+            let newWidth = startWidth;
+            let newHeight = startHeight;
+
+            if (resizeType === 'right' || resizeType === 'corner') {
+                newWidth = Math.max(240, Math.min(startWidth + deltaX, window.innerWidth * 0.9));
+            }
+
+            if (resizeType === 'bottom' || resizeType === 'corner') {
+                newHeight = Math.max(140, Math.min(startHeight + deltaY, window.innerHeight * 0.9));
+            }
+
+            floatingCam.style.width = newWidth + 'px';
+            floatingCam.style.height = newHeight + 'px';
+            
+            // Force browser to recalculate layout for video elements
+            window.requestAnimationFrame(() => {
+                const videos = floatingCam.querySelectorAll('video');
+                videos.forEach(video => {
+                    video.style.width = '';
+                    video.style.height = '';
+                });
+            });
+        }
+
+        function resizeEnd() {
+            isResizing = false;
+            resizeType = null;
+            floatingCam.style.transition = '';
+            
+            document.removeEventListener('mousemove', resize);
+            document.removeEventListener('touchmove', resize);
+            document.removeEventListener('mouseup', resizeEnd);
+            document.removeEventListener('touchend', resizeEnd);
+        }
+
+        // Modal controls
+        const openRoomBtn = document.getElementById('openRoom');
+        const closeRoomBtn = document.getElementById('closeRoom');
+        const roomModal = document.getElementById('roomModal');
+
+        openRoomBtn.addEventListener('click', () => {
+            roomModal.classList.add('show');
+            roomModal.setAttribute('aria-hidden', 'false');
+        });
+
+        closeRoomBtn.addEventListener('click', () => {
+            roomModal.classList.remove('show');
+            roomModal.setAttribute('aria-hidden', 'true');
+        });
+
+        roomModal.addEventListener('click', (e) => {
+            if (e.target === roomModal) {
+                roomModal.classList.remove('show');
+                roomModal.setAttribute('aria-hidden', 'true');
+            }
+        });
+    </script>
 </body>
+
 </html>

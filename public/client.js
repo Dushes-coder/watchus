@@ -229,6 +229,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
 			roomId = rid;
 			socket.emit('join-room', { roomId });
 			if(url){ socket.emit('load-video', { roomId, url }); loadPlayer(url); }
+			// persist values
+			try{ localStorage.setItem('wt_room_id', rid); }catch(e){}
+			try{ if(url) localStorage.setItem('wt_video_url', url); }catch(e){}
 		});
 	}
 
@@ -237,10 +240,15 @@ document.addEventListener('DOMContentLoaded', ()=>{
 		copyInvite.addEventListener('click', ()=>{
 			const rid = $('roomId').value.trim();
 			if(!rid) return alert('Введите roomId');
-			const invite = `${location.origin}/?room=${encodeURIComponent(rid)}`;
+			const currentUrl = $('videoUrl') ? $('videoUrl').value.trim() : '';
+			const invite = `${location.origin}/?room=${encodeURIComponent(rid)}${currentUrl ? `&url=${encodeURIComponent(currentUrl)}` : ''}`;
 			navigator.clipboard.writeText(invite).then(()=> alert('Ссылка скопирована')).catch(()=> alert('Не удалось скопировать'));
 		});
 	}
+
+	// Persist inputs on change/blur
+	const ridInput = $('roomId'); if(ridInput){ ridInput.addEventListener('blur', ()=>{ try{ if(ridInput.value.trim()) localStorage.setItem('wt_room_id', ridInput.value.trim()); }catch(e){} }); }
+	const urlInput = $('videoUrl'); if(urlInput){ urlInput.addEventListener('blur', ()=>{ try{ if(urlInput.value.trim()) localStorage.setItem('wt_video_url', urlInput.value.trim()); }catch(e){} }); }
 
 	// Локальный файл через input
 	const fileInput = $('videoFile');
@@ -253,6 +261,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
 			loadPlayer(url);
 		});
 	}
+
+	// Restore saved room and url if present (unless URL params will handle it below)
+	try{
+		const savedRid = localStorage.getItem('wt_room_id') || '';
+		const savedUrl = localStorage.getItem('wt_video_url') || '';
+		if(savedRid){ const roomInput = $('roomId'); if(roomInput) roomInput.value = savedRid; }
+		if(savedUrl){ const vInput = $('videoUrl'); if(vInput) vInput.value = savedUrl; }
+	}catch(e){}
 
 	// Drag & drop на плеер
 	const container = $('playerContainer');
@@ -298,12 +314,91 @@ document.addEventListener('DOMContentLoaded', ()=>{
 		else if(player.type==='youtube' && youtubePlayer){ const t = youtubePlayer.getCurrentTime() + 10; youtubePlayer.seekTo(t, true); if(roomId) socket.emit('player-event', { roomId, type:'seek', data:{time: t} }); }
 	});
 
-	const sendBtn = $('sendMsg'); if(sendBtn) sendBtn.addEventListener('click', ()=>{
-		const msg = $('chatMsg').value.trim(); if(!msg || !roomId) return; socket.emit('chat-message', { roomId, author: userEmoji, message: msg }); $('chatMsg').value = '';
-	});
+    // Chat send
+    const sendBtn = $('sendMsg');
+    if(sendBtn){
+        sendBtn.addEventListener('click', ()=>{
+            const msgInput = $('chatMsg');
+            const msg = msgInput ? msgInput.value.trim() : '';
+            if(!msg || !roomId) return;
+            socket.emit('chat-message', { roomId, author: userEmoji, message: msg });
+            msgInput.value = '';
+        });
+    }
+    // Send on Enter, newline on Shift+Enter
+    const chatInput = $('chatMsg');
+    if(chatInput){
+        chatInput.addEventListener('keydown', (e)=>{
+            if(e.key === 'Enter'){
+                if(e.shiftKey){
+                    // allow newline
+                    return;
+                }
+                e.preventDefault();
+                const text = chatInput.value.trim();
+                if(!text || !roomId) return;
+                socket.emit('chat-message', { roomId, author: userEmoji, message: text });
+                chatInput.value = '';
+            }
+        });
+    }
 
-	// Поместить emoji в placeholder поля ввода
-	const chatMsg = $('chatMsg'); if(chatMsg) chatMsg.placeholder = `Напиши сообщение... (вы: ${userEmoji})`;
+	// Room modal open/close
+	const openRoom = $('openRoom');
+	const closeRoom = $('closeRoom');
+	const roomModal = $('roomModal');
+	function showModal(){ if(roomModal){ roomModal.style.display = 'flex'; } }
+	function hideModal(){ if(roomModal){ roomModal.style.display = 'none'; } }
+	if(openRoom) openRoom.addEventListener('click', showModal);
+	if(closeRoom) closeRoom.addEventListener('click', hideModal);
+	if(roomModal){ roomModal.addEventListener('click', (e)=>{ if(e.target === roomModal) hideModal(); }); }
+
+	// Reset saved room/url button
+	const resetSaved = $('resetSaved');
+	if(resetSaved){
+		resetSaved.addEventListener('click', ()=>{
+			try{ localStorage.removeItem('wt_room_id'); }catch(e){}
+			try{ localStorage.removeItem('wt_video_url'); }catch(e){}
+			const ridInput2 = $('roomId'); if(ridInput2) ridInput2.value = '';
+			const urlInput2 = $('videoUrl'); if(urlInput2) urlInput2.value = '';
+			alert('Сохранённые Room ID и ссылка на видео очищены');
+		});
+	}
+	// auto-open modal when roomId is empty on first load
+	setTimeout(()=>{ const rid = $('roomId') && $('roomId').value.trim(); if(!rid && openRoom && roomModal) showModal(); }, 100);
+
+	// Авто-вход по параметрам URL: ?room=...&url=...&autocam=1
+	try{
+		const params = new URLSearchParams(location.search);
+		const rid = (params.get('room') || '').trim();
+		const url = (params.get('url') || '').trim();
+		const autoCam = ['1','true','yes'].includes((params.get('autocam') || '').toLowerCase());
+		if(rid){
+			// выставим поля формы для наглядности
+			const roomInput = $('roomId'); if(roomInput) roomInput.value = rid;
+			if(url){ const urlInput = $('videoUrl'); if(urlInput) urlInput.value = url; }
+
+			roomId = rid;
+			socket.emit('join-room', { roomId: rid });
+			if(url){ socket.emit('load-video', { roomId: rid, url }); loadPlayer(url); }
+
+			// опционально включаем камеру и шлём offer
+			if(autoCam && !localStream){
+				const btn = $('toggleCam');
+				if(btn){ btn.click(); }
+			}
+		} else {
+			// если параметров нет, автоподключение по сохранённым данным
+			try{
+				const savedRid = localStorage.getItem('wt_room_id') || '';
+				const savedUrl = localStorage.getItem('wt_video_url') || '';
+				if(savedRid){
+					roomId = savedRid; socket.emit('join-room', { roomId: savedRid });
+					if(savedUrl){ socket.emit('load-video', { roomId: savedRid, url: savedUrl }); loadPlayer(savedUrl); }
+				}
+			}catch(e){}
+		}
+	}catch(e){ /* ignore */ }
 });
 
 // --- WebRTC helpers ---
@@ -427,23 +522,139 @@ function initFloatingCam(){
 	// restore position/size
 	try{
 		const pos = JSON.parse(localStorage.getItem('wt_cam_pos')||'null');
-		if(pos){ widget.style.left = pos.left; widget.style.top = pos.top; widget.style.width = pos.width; widget.style.height = pos.height; widget.style.right = 'auto'; widget.style.bottom = 'auto'; }
+		if(pos){ widget.style.left = pos.left; widget.style.top = pos.top; widget.style.width = pos.width; widget.style.height = pos.height; }
 	}catch(e){}
+
+	// ensure widget uses left/top anchoring (not right/bottom) and explicit size for proper CSS resize
+	(function ensureAnchors(){
+		widget.style.right = 'auto';
+		widget.style.bottom = 'auto';
+		if(!widget.style.width) widget.style.width = widget.offsetWidth + 'px';
+		if(!widget.style.height) widget.style.height = widget.offsetHeight + 'px';
+		if(!widget.style.left && !widget.style.top){
+			const left = Math.max(8, window.innerWidth - widget.offsetWidth - 18);
+			const top = Math.max(8, window.innerHeight - widget.offsetHeight - 18);
+			widget.style.left = left + 'px';
+			widget.style.top = top + 'px';
+		}
+	})();
+
+	// add visible resize handles (south, east, south-east)
+	function createHandle(className, onDrag){
+		const h = document.createElement('div');
+		h.className = 'resize-handle ' + className;
+		let dragging=false, startX=0, startY=0, startW=0, startH=0;
+		h.addEventListener('mousedown', (e)=>{ dragging=true; startX=e.clientX; startY=e.clientY; startW=widget.offsetWidth; startH=widget.offsetHeight; e.preventDefault(); e.stopPropagation(); });
+		document.addEventListener('mousemove', (e)=>{ if(!dragging) return; onDrag(e, {startX,startY,startW,startH}); e.preventDefault(); });
+		document.addEventListener('mouseup', ()=>{ if(!dragging) return; dragging=false; try{ localStorage.setItem('wt_cam_pos', JSON.stringify({ left: widget.style.left, top: widget.style.top, width: widget.style.width, height: widget.style.height })); }catch(e){} });
+		widget.appendChild(h);
+		return h;
+	}
+
+	createHandle('rh-se', (e, s)=>{
+		const dw = e.clientX - s.startX; const dh = e.clientY - s.startY;
+		widget.style.width = Math.min(window.innerWidth*0.9, Math.max(220, s.startW + dw)) + 'px';
+		widget.style.height = Math.min(window.innerHeight*0.9, Math.max(120, s.startH + dh)) + 'px';
+	});
+	createHandle('rh-e', (e, s)=>{
+		const dw = e.clientX - s.startX;
+		widget.style.width = Math.min(window.innerWidth*0.9, Math.max(220, s.startW + dw)) + 'px';
+	});
+	createHandle('rh-s', (e, s)=>{
+		const dh = e.clientY - s.startY;
+		widget.style.height = Math.min(window.innerHeight*0.9, Math.max(120, s.startH + dh)) + 'px';
+	});
 
 	const header = $('camHeader');
 	let dragging=false, startX=0, startY=0, startLeft=0, startTop=0;
+
+	function ensureWithinViewport(){
+		const margin = 8;
+		const w = widget.offsetWidth; const h = widget.offsetHeight;
+		const vw = window.innerWidth; const vh = window.innerHeight;
+		let left = widget.offsetLeft; let top = widget.offsetTop;
+		left = Math.max(margin, Math.min(left, vw - w - margin));
+		top = Math.max(margin, Math.min(top, vh - h - margin));
+		widget.style.left = left + 'px';
+		widget.style.top = top + 'px';
+		widget.style.right = 'auto'; widget.style.bottom = 'auto';
+	}
+
 	function onDown(e){
 		dragging = true;
 		const p = e.touches ? e.touches[0] : e;
 		startX = p.clientX; startY = p.clientY;
 		startLeft = widget.offsetLeft; startTop = widget.offsetTop;
-		header.style.cursor = 'grabbing';
+		if(header) header.style.cursor = 'grabbing';
 		e.preventDefault();
 	}
-	function onMove(e){ if(!dragging) return; const p = e.touches ? e.touches[0] : e; const dx = p.clientX - startX; const dy = p.clientY - startY; widget.style.left = (startLeft + dx) + 'px'; widget.style.top = (startTop + dy) + 'px'; widget.style.right = 'auto'; widget.style.bottom = 'auto'; }
-	function onUp(e){ if(!dragging) return; dragging=false; header.style.cursor='grab'; try{ localStorage.setItem('wt_cam_pos', JSON.stringify({ left: widget.style.left, top: widget.style.top, width: widget.style.width, height: widget.style.height })); }catch(e){} }
-	header.addEventListener('mousedown', onDown); document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp);
-	header.addEventListener('touchstart', onDown); document.addEventListener('touchmove', onMove); document.addEventListener('touchend', onUp);
+	function onMove(e){
+		if(!dragging) return;
+		const p = e.touches ? e.touches[0] : e;
+		const dx = p.clientX - startX; const dy = p.clientY - startY;
+		const margin = 8;
+		const w = widget.offsetWidth; const h = widget.offsetHeight;
+		const vw = window.innerWidth; const vh = window.innerHeight;
+		let newLeft = startLeft + dx; let newTop = startTop + dy;
+		newLeft = Math.max(margin, Math.min(newLeft, vw - w - margin));
+		newTop = Math.max(margin, Math.min(newTop, vh - h - margin));
+		widget.style.left = newLeft + 'px'; widget.style.top = newTop + 'px';
+		widget.style.right = 'auto'; widget.style.bottom = 'auto';
+		e.preventDefault();
+	}
+	function onUp(e){
+		if(!dragging) return;
+		dragging=false; if(header) header.style.cursor='grab';
+		try{ localStorage.setItem('wt_cam_pos', JSON.stringify({ left: widget.style.left, top: widget.style.top, width: widget.style.width, height: widget.style.height })); }catch(e){}
+	}
+	// Allow dragging from header and from the whole widget (in case header is off-screen)
+	if(header){ header.addEventListener('mousedown', onDown); header.addEventListener('touchstart', onDown, {passive:false}); }
+	widget.addEventListener('mousedown', onDown);
+	widget.addEventListener('touchstart', onDown, {passive:false});
+	document.addEventListener('mousemove', onMove);
+	document.addEventListener('touchmove', onMove, {passive:false});
+	document.addEventListener('mouseup', onUp);
+	document.addEventListener('touchend', onUp);
+
+	// Keep widget inside viewport on load and on resize
+	ensureWithinViewport();
+	window.addEventListener('resize', ensureWithinViewport);
+
+	// Persist size changes when user resizes the widget
+	try{
+		const ro = new ResizeObserver(()=>{
+			try{ localStorage.setItem('wt_cam_pos', JSON.stringify({ left: widget.style.left, top: widget.style.top, width: widget.style.width, height: widget.style.height })); }catch(e){}
+			ensureWithinViewport();
+		});
+		ro.observe(widget);
+	}catch(e){}
+
+	// hide/show self-preview
+	const toggleSelfBtn = $('toggleSelf');
+	if(toggleSelfBtn){
+		toggleSelfBtn.addEventListener('click', ()=>{
+			const local = $('localVideo');
+			if(!local) return;
+			const hidden = local.classList.toggle('hide');
+			if(hidden){ local.style.display = 'none'; } else { local.style.display = ''; }
+			try{ localStorage.setItem('wt_cam_self_hidden', hidden ? '1':'0'); }catch(e){}
+		});
+		// restore
+		try{ if(localStorage.getItem('wt_cam_self_hidden') === '1'){ const local = $('localVideo'); if(local){ local.style.display = 'none'; local.classList.add('hide'); } } }catch(e){}
+	}
+
+	// enlarge/restore behavior
+	const enlarge = $('enlargeCam');
+	if(enlarge){
+		enlarge.addEventListener('click', ()=>{
+			widget.classList.toggle('max');
+			enlarge.textContent = widget.classList.contains('max') ? '⤡' : '⤢';
+			// save state
+			try{ localStorage.setItem('wt_cam_max', widget.classList.contains('max') ? '1':'0'); }catch(e){}
+		});
+		// restore previous enlarge state
+		try{ if(localStorage.getItem('wt_cam_max') === '1'){ widget.classList.add('max'); enlarge.textContent = '⤡'; } }catch(e){}
+	}
 
 	// pin behavior
 	const pin = $('pinCam'); if(pin){ pin.addEventListener('click', ()=>{ widget.classList.toggle('pin'); pin.textContent = widget.classList.contains('pin') ? '📌' : '📌'; }); }
@@ -614,7 +825,17 @@ socket.on('room-state', ({ state })=>{
 
 socket.on('player-event', ({ type, data })=>{ applyIncomingEvent(type, data); });
 
-socket.on('chat-message', ({ author, message })=>{
-	const el = document.createElement('div'); el.textContent = `${author}: ${message}`; const box = $('chatBox'); if(box) box.appendChild(el);
+// Chat receive
+socket.on('chat-message', ({ author, message, time })=>{
+    const box = $('chatBox');
+    if(!box) return;
+    const el = document.createElement('div');
+    el.className = 'message';
+    const dt = new Date(time || Date.now());
+    const hh = String(dt.getHours()).padStart(2,'0');
+    const mm = String(dt.getMinutes()).padStart(2,'0');
+    el.textContent = `[${hh}:${mm}] ${author}: ${message}`;
+    box.appendChild(el);
+    box.scrollTop = box.scrollHeight;
 });
 

@@ -63,10 +63,10 @@ io.on('connection', (socket) => {
 		io.in(roomId).emit('player-event', { type: 'load', data: { url, time: 0 } });
 	});
 
-	// Простой чат — ретранслируем всем в комнате
-	socket.on('chat-message', ({ roomId, author, message }) => {
-		io.in(roomId).emit('chat-message', { author, message, time: Date.now() });
-	});
+    // Простой чат — ретранслируем всем в комнате
+    socket.on('chat-message', ({ roomId, author, message }) => {
+        io.in(roomId).emit('chat-message', { author, message, time: Date.now() });
+    });
 
 	// WebRTC signaling: offer/answer/ice
 	socket.on('webrtc-offer', ({ roomId, sdp }) => {
