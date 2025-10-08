@@ -227,7 +227,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 			const url = $('videoUrl').value.trim();
 			if(!rid) return alert('Введите roomId');
 			roomId = rid;
-			socket.emit('join-room', { roomId });
+			socket.emit('join-room', { roomId, requestGames: true });
 			if(url){ socket.emit('load-video', { roomId, url }); loadPlayer(url); }
 			// persist values
 			try{ localStorage.setItem('wt_room_id', rid); }catch(e){}
@@ -379,7 +379,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 			if(url){ const urlInput = $('videoUrl'); if(urlInput) urlInput.value = url; }
 
 			roomId = rid;
-			socket.emit('join-room', { roomId: rid });
+			socket.emit('join-room', { roomId: rid, requestGames: true });
 			if(url){ socket.emit('load-video', { roomId: rid, url }); loadPlayer(url); }
 
 			// опционально включаем камеру и шлём offer
@@ -393,7 +393,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 				const savedRid = localStorage.getItem('wt_room_id') || '';
 				const savedUrl = localStorage.getItem('wt_video_url') || '';
 				if(savedRid){
-					roomId = savedRid; socket.emit('join-room', { roomId: savedRid });
+					roomId = savedRid; socket.emit('join-room', { roomId: savedRid, requestGames: true });
 					if(savedUrl){ socket.emit('load-video', { roomId: savedRid, url: savedUrl }); loadPlayer(savedUrl); }
 				}
 			}catch(e){}
@@ -821,9 +821,23 @@ socket.on('room-state', ({ state })=>{
 			isSeekingProgrammatically = false;
 		}
 	}, 300); }
+	
+	// Обновляем состояние игр при получении состояния комнаты
+	if(state.games) {
+		if(state.games.chess) updateChess(state.games.chess);
+		if(state.games.tictactoe) updateTTT(state.games.tictactoe);
+		if(state.games.cards) updateCards(state.games.cards);
+	}
 });
 
 socket.on('player-event', ({ type, data })=>{ applyIncomingEvent(type, data); });
+
+// Game events handler
+socket.on('game_event', (msg) => {
+    if (msg.game === 'chess') updateChess(msg.data);
+    if (msg.game === 'cards') updateCards(msg.data);
+    if (msg.game === 'tictactoe') updateTTT(msg.data);
+});
 
 // Chat receive
 socket.on('chat-message', ({ author, message, time })=>{
