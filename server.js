@@ -6,17 +6,20 @@ const path = require('path');
 const app = express();
 const server = http.createServer(app);
 
-// Улучшенная конфигурация CORS
+// Улучшенная конфигурация CORS для продакшена
 const io = new Server(server, {
     cors: {
         origin: (origin, callback) => {
-            // Разрешаем все источники, включая file:// и chrome-extension://
+            // Разрешаем все источники для продакшена
             callback(null, true);
         },
         methods: ["GET", "POST"],
-        credentials: true
+        credentials: true,
+        transports: ['websocket', 'polling']
     },
-    allowEIO3: true
+    allowEIO3: true,
+    pingTimeout: 60000,
+    pingInterval: 25000
 });
 
 // Middleware для CORS
@@ -27,6 +30,20 @@ app.use((req, res, next) => {
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Добавляем middleware для JSON парсинга
+app.use(express.json());
+
+// Health check endpoint для мониторинга
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        rooms: Array.from(roomStates.keys()).length,
+        games: Array.from(gameStates.keys()).length
+    });
+});
 
 // Простая маршрутизация: / -> интерфейс создания комнаты
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
@@ -55,9 +72,13 @@ io.on('connection', (socket) => {
 		clearInterval(pingInterval);
 	});
 
-	socket.on('join-room', ({ roomId }) => {
+	socket.on('join-room', ({ roomId, userEmoji }) => {
 		socket.join(roomId);
 		console.log(socket.id, 'joined', roomId);
+		
+		// Сохраняем эмодзи пользователя
+		socket.userEmoji = userEmoji || '👤';
+		
 		// отправляем текущее состояние комнаты, если есть
 		const state = roomStates.get(roomId) || null;
 		socket.emit('room-state', { state });
@@ -67,6 +88,14 @@ io.on('connection', (socket) => {
 		if (gameState) {
 			socket.emit('game-state', gameState);
 		}
+
+		// отправляем список игроков в комнате
+		sendRoomPlayers(roomId);
+	});
+
+	// Обработчик запроса списка игроков в комнате
+	socket.on('get-room-players', ({ roomId }) => {
+		sendRoomPlayers(roomId);
 	});
 
 	// Синхронизирующие события: play, pause, seek, load
@@ -256,14 +285,29 @@ io.on('connection', (socket) => {
 	});
 });
 
-// Вспомогательная функция для проверки победителя в крестиках-ноликах
-function checkTicTacToeWinner(board) {
-	// Проверяем строки
-	for (let row = 0; row < 3; row++) {
-		if (board[row][0] && board[row][0] === board[row][1] && board[row][0] === board[row][2]) {
-			return board[row][0];
+// Вспомогательная функция для отправки списка игроков в комнате
+function sendRoomPlayers(roomId) {
+	const roomSockets = io.sockets.adapter.rooms.get(roomId);
+	if (!roomSockets) return;
+
+	const players = [];
+	for (const socketId of roomSockets) {
+		const socket = io.sockets.sockets.get(socketId);
+		if (socket) {
+			players.push({
+				id: socketId,
+				name: `Игрок ${socketId.slice(0, 4)}`,
+				emoji: socket.userEmoji || '👤'
+			});
 		}
 	}
+
+	// Отправляем список всем игрокам в комнате
+	io.in(roomId).emit('room-players', players);
+}
+
+// Вспомогательная функция для проверки победителя в крестиках-ноликах
+function checkTicTacToeWinner(board) {
 	// Проверяем столбцы
 	for (let col = 0; col < 3; col++) {
 		if (board[0][col] && board[0][col] === board[1][col] && board[0][col] === board[2][col]) {
@@ -292,4 +336,8 @@ function checkTicTacToeWinner(board) {
 }
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+server.listen(PORT, () => {
+    const host = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
+    console.log(`Server running on http://${host}:${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+});

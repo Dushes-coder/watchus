@@ -594,7 +594,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			const url = $('videoUrl').value.trim();
 			if (!rid) return alert('Введите roomId');
 			roomId = rid; updateGlobalRoomId(roomId);
-			socket.emit('join-room', { roomId });
+			socket.emit('join-room', { roomId, userEmoji });
 			if (url) { socket.emit('load-video', { roomId, url }); loadPlayer(url); }
 			// persist values
 			try { localStorage.setItem('wt_room_id', rid); } catch (e) { }
@@ -1064,7 +1064,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			if (url) { const urlInput = $('videoUrl'); if (urlInput) urlInput.value = url; }
 
 			roomId = rid; updateGlobalRoomId(roomId);
-			socket.emit('join-room', { roomId: rid });
+			socket.emit('join-room', { roomId: rid, userEmoji });
 			if (url) { socket.emit('load-video', { roomId: rid, url }); loadPlayer(url); }
 
 			// опционально включаем камеру и шлём offer
@@ -1078,7 +1078,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				const savedRid = localStorage.getItem('wt_room_id') || '';
 				const savedUrl = localStorage.getItem('wt_video_url') || '';
 				if (savedRid) {
-					roomId = savedRid; updateGlobalRoomId(roomId); socket.emit('join-room', { roomId: savedRid });
+					roomId = savedRid; updateGlobalRoomId(roomId); socket.emit('join-room', { roomId: savedRid, userEmoji });
 					if (savedUrl) { socket.emit('load-video', { roomId: savedRid, url: savedUrl }); loadPlayer(savedUrl); }
 				}
 			} catch (e) { }
