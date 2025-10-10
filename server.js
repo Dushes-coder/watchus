@@ -138,6 +138,36 @@ io.on('connection', (socket) => {
 
 	// === ИГРОВЫЕ СОБЫТИЯ ===
 	
+	// Отправка приглашения в игру
+	socket.on('send-game-invitation', ({ roomId, targetPlayerId, gameType, senderName }) => {
+		console.log(`Game invitation sent: ${gameType} from ${socket.id} to ${targetPlayerId} in room ${roomId}`);
+		
+		// Отправляем приглашение целевому игроку
+		socket.to(targetPlayerId).emit('game-invitation', {
+			gameType: gameType,
+			senderId: socket.id,
+			senderName: senderName || 'Игрок',
+			senderEmoji: socket.userEmoji || '👤'
+		});
+	});
+	
+	// Ответ на приглашение в игру
+	socket.on('game-invitation-response', ({ roomId, senderId, accepted, gameType }) => {
+		console.log(`Game invitation response: ${accepted ? 'accepted' : 'declined'} from ${socket.id} for ${gameType}`);
+		
+		// Отправляем ответ отправителю приглашения
+		socket.to(senderId).emit('game-invitation-response', {
+			accepted: accepted,
+			responderId: socket.id,
+			gameType: gameType
+		});
+		
+		// Если приглашение принято, начинаем игру
+		if (accepted) {
+			startNetworkGame(roomId, gameType, [senderId, socket.id]);
+		}
+	});
+	
 	// Начало новой игры
 	socket.on('game-start', ({ roomId, gameType }) => {
 		console.log(`Game started: ${gameType} in room ${roomId}`);
@@ -333,6 +363,86 @@ function checkTicTacToeWinner(board) {
 		if (!isDraw) break;
 	}
 	return isDraw ? 'draw' : null;
+}
+
+// Функция для запуска сетевой игры между двумя игроками
+function startNetworkGame(roomId, gameType, players) {
+	console.log(`Starting network game: ${gameType} between players ${players.join(' and ')} in room ${roomId}`);
+	
+	let initialState = null;
+	
+	if (gameType === 'chess') {
+		initialState = {
+			gameType: 'chess',
+			board: [
+				['br', 'bn', 'bb', 'bq', 'bk', 'bb', 'bn', 'br'],
+				['bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp'],
+				['', '', '', '', '', '', '', ''],
+				['', '', '', '', '', '', '', ''],
+				['', '', '', '', '', '', '', ''],
+				['', '', '', '', '', '', '', ''],
+				['wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp'],
+				['wr', 'wn', 'wb', 'wq', 'wk', 'wb', 'wn', 'wr']
+			],
+			currentPlayer: 'white',
+			selectedCell: null,
+			players: players,
+			gameStarted: true
+		};
+	} else if (gameType === 'tictactoe') {
+		initialState = {
+			gameType: 'tictactoe',
+			board: [['', '', ''], ['', '', ''], ['', '', '']],
+			currentPlayer: 'X',
+			gameOver: false,
+			winner: null,
+			players: players,
+			gameStarted: true
+		};
+	} else if (gameType === 'cards') {
+		// Создаём колоду
+		const suits = ['♠', '♥', '♦', '♣'];
+		const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+		const deck = [];
+		for (let suit of suits) {
+			for (let value of values) {
+				deck.push({ suit, value });
+			}
+		}
+		// Перемешиваем
+		for (let i = deck.length - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1));
+			[deck[i], deck[j]] = [deck[j], deck[i]];
+		}
+		// Раздаём карты
+		const player1Hand = [];
+		const player2Hand = [];
+		for (let i = 0; i < 6; i++) {
+			player1Hand.push(deck.pop());
+			player2Hand.push(deck.pop());
+		}
+		initialState = {
+			gameType: 'cards',
+			deck: deck,
+			player1Hand: player1Hand,
+			player2Hand: player2Hand,
+			tableCards: [],
+			currentPlayer: 'player1',
+			trumpCard: deck.length > 0 ? deck[0] : null,
+			players: players,
+			gameStarted: true
+		};
+	}
+	
+	if (initialState) {
+		gameStates.set(roomId, initialState);
+		io.in(roomId).emit('game-started', {
+			gameType: gameType,
+			players: players,
+			roomId: roomId
+		});
+		io.in(roomId).emit('game-state', initialState);
+	}
 }
 
 const PORT = process.env.PORT || 3000;

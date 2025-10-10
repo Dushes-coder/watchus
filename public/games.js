@@ -443,16 +443,16 @@ function startGameWithOpponent(gameType) {
     // Запускаем игру
     switch(gameType) {
         case 'chess':
-            openGame('chess');
+            initNetworkChess();
             break;
         case 'tictactoe':
-            openGame('tictactoe');
+            initNetworkTicTacToe();
             break;
         case 'poker':
-            openGame('poker');
+            initNetworkPoker();
             break;
         case 'cards':
-            openGame('cards');
+            initNetworkCards();
             break;
     }
 }
