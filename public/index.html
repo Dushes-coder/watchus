@@ -161,6 +161,30 @@
                 </div>
             </div>
 
+            <!-- Room Settings -->
+            <div class="panel compact">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <span class="icon">⚙️</span>
+                        <span>Настройки</span>
+                    </div>
+                </div>
+                <div class="room-settings">
+                    <button class="secondary" onclick="document.getElementById('openRoom').click()">
+                        <span class="icon">🏠</span>
+                        Комната
+                    </button>
+                    <button class="secondary" onclick="document.getElementById('themeToggle').click()">
+                        <span class="icon" id="themeIcon">🌙</span>
+                        Тема
+                    </button>
+                    <button class="secondary" onclick="document.getElementById('aboutBtn').click()">
+                        <span class="icon">ℹ️</span>
+                        О программе
+                    </button>
+                </div>
+            </div>
+
             <!-- Active Game Panel -->
             <div id="activeGamePanel" class="panel game-panel hidden">
                 <div class="panel-header">
@@ -459,10 +483,14 @@
                     if (savedTheme === 'light') {
                         document.body.classList.add('light-theme');
                         const themeIcon = themeToggle.querySelector('.theme-icon');
+                        const panelThemeIcon = document.getElementById('themeIcon');
                         if (themeIcon) themeIcon.textContent = '🌙';
+                        if (panelThemeIcon) panelThemeIcon.textContent = '🌙';
                     } else {
                         const themeIcon = themeToggle.querySelector('.theme-icon');
+                        const panelThemeIcon = document.getElementById('themeIcon');
                         if (themeIcon) themeIcon.textContent = '☀️';
+                        if (panelThemeIcon) panelThemeIcon.textContent = '☀️';
                     }
                 } catch (e) {}
 
@@ -470,16 +498,19 @@
                     const body = document.body;
                     const isLight = body.classList.contains('light-theme');
                     const themeIcon = this.querySelector('.theme-icon');
+                    const panelThemeIcon = document.getElementById('themeIcon');
 
                     if (isLight) {
                         body.classList.remove('light-theme');
                         body.classList.add('theme-transition');
                         try { localStorage.setItem('wt_theme', 'dark'); } catch (e) {}
                         if (themeIcon) themeIcon.textContent = '☀️';
+                        if (panelThemeIcon) panelThemeIcon.textContent = '☀️';
                     } else {
                         body.classList.add('light-theme', 'theme-transition');
                         try { localStorage.setItem('wt_theme', 'light'); } catch (e) {}
                         if (themeIcon) themeIcon.textContent = '🌙';
+                        if (panelThemeIcon) panelThemeIcon.textContent = '🌙';
                     }
 
                     // Обновляем статус подключения в хедере
