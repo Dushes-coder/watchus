@@ -32,15 +32,16 @@ function initializeSocket() {
         console.log('Connected to server with ID:', window.socket.id);
         updateConnectionStatus(true);
         // Удаляем сообщение об ошибке, если оно есть
-        const errorMessage = document.querySelector('.error-message');
-        if (errorMessage) {
-            errorMessage.remove();
-        }
     });
 
     window.socket.on('disconnect', (reason) => {
         console.log('Disconnected from server:', reason);
         updateConnectionStatus(false);
+        // Очищаем список участников при отключении
+        window.roomPlayers = [];
+        if (typeof updateParticipantsList === 'function') {
+            updateParticipantsList();
+        }
         if (reason === 'io server disconnect') {
             // Сервер принудительно отключил сокет, переподключаемся
             window.socket.connect();
@@ -51,8 +52,6 @@ function initializeSocket() {
         console.error('Socket connection error:', error);
         showError('Ошибка подключения к серверу. Пытаемся переподключиться...');
     });
-
-    // Обработка пинга от сервера
     window.socket.on('ping', (data) => {
         window.socket.emit('pong', { time: data.time });
     });

@@ -30,16 +30,54 @@ window.roomPlayers = [];
 window.currentOpponent = null;
 window.gameInvitations = {};
 
-// Проверяем что gameContainer не перезаписывается
-document.addEventListener('DOMContentLoaded', function() {
-    const gameContainer = document.getElementById('gameContainer');
-    console.log('DOM loaded, gameContainer:', gameContainer);
-    console.log('gameContainer content length:', gameContainer?.innerHTML?.length);
-    console.log('gameContainer visible:', gameContainer?.offsetHeight > 0);
-    console.log('games-grid exists:', !!document.querySelector('.games-grid'));
-    console.log('game-card count:', document.querySelectorAll('.game-card').length);
-    console.log('test button exists:', !!document.querySelector('button[onclick="testDurak()"]'));
-});
+// Функция для обновления списка участников комнаты
+function updateParticipantsList() {
+    const participantsList = document.getElementById('participantsList');
+    const participantCount = document.getElementById('participantCount');
+
+    if (!participantsList || !participantCount) return;
+
+    if (!window.roomPlayers || window.roomPlayers.length === 0) {
+        participantsList.innerHTML = `
+            <div class="no-participants">
+                <div class="no-participants-icon">👤</div>
+                <div class="no-participants-text">Нет участников</div>
+            </div>
+        `;
+        participantCount.textContent = '(0)';
+        return;
+    }
+
+    // Сортируем участников: текущий пользователь первым
+    const sortedPlayers = [...window.roomPlayers].sort((a, b) => {
+        const isCurrentA = a.id === (window.socket?.id || 'self');
+        const isCurrentB = b.id === (window.socket?.id || 'self');
+        if (isCurrentA && !isCurrentB) return -1;
+        if (!isCurrentA && isCurrentB) return 1;
+        return 0;
+    });
+
+    let html = '';
+    sortedPlayers.forEach(player => {
+        const isCurrentUser = player.id === (window.socket?.id || 'self');
+        const statusClass = isCurrentUser ? 'current-user' : 'other-user';
+        const statusText = isCurrentUser ? 'Вы' : 'Онлайн';
+
+        html += `
+            <div class="participant-item ${statusClass}">
+                <div class="participant-avatar">${player.emoji || '👤'}</div>
+                <div class="participant-info">
+                    <div class="participant-name">${player.name || 'Игрок'}</div>
+                    <div class="participant-status">${statusText}</div>
+                </div>
+                ${isCurrentUser ? '<div class="current-user-indicator">👑</div>' : ''}
+            </div>
+        `;
+    });
+
+    participantsList.innerHTML = html;
+    participantCount.textContent = `(${window.roomPlayers.length})`;
+}
 
 // Значки для шахмат, если не определены
 if (!window.chessPieces) {
@@ -60,6 +98,7 @@ function updateRoomPlayers() {
 if (window.socket) {
     window.socket.on('room-players', (players) => {
         window.roomPlayers = players || [];
+        updateParticipantsList();
         updateOpponentSelector();
     });
     
@@ -139,46 +178,86 @@ function showOpponentSelector(gameType) {
     modal.className = 'modal-overlay opponent-selector';
     modal.setAttribute('aria-hidden', 'false');
     modal.style.display = 'flex';
-    
+
+    let gameIcon = '';
+    let gameName = '';
+    switch(gameType) {
+        case 'chess': gameIcon = '♟️'; gameName = 'Шахматы'; break;
+        case 'tictactoe': gameIcon = '⭕'; gameName = 'Крестики-нолики'; break;
+        case 'poker': gameIcon = '🃏'; gameName = 'Покер'; break;
+        case 'cards': gameIcon = '🃏'; gameName = 'Карты'; break;
+    }
+
     let html = '<div class="modal-content opponent-modal">';
     html += '<div class="modal-header">';
-    html += '<h3>Выберите соперника</h3>';
+    html += '<h3>' + gameIcon + ' Выберите соперника для ' + gameName + '</h3>';
     html += '<button class="secondary icon-btn" onclick="closeOpponentSelector()">✕</button>';
     html += '</div>';
+
+    html += '<div class="opponent-sections">';
+
+    // Секция с ботами
+    html += '<div class="opponent-section">';
+    html += '<h4>🤖 Игра с ботом</h4>';
+    html += '<div class="bot-options">';
+
+    // Разные уровни сложности для ботов
+    const botLevels = [
+        { level: 'easy', name: 'Легкий', emoji: '🐣', description: 'Для начинающих' },
+        { level: 'medium', name: 'Средний', emoji: '😐', description: 'Нормальная игра' },
+        { level: 'hard', name: 'Сложный', emoji: '💪', description: 'Для опытных' }
+    ];
+
+    botLevels.forEach(bot => {
+        html += '<div class="opponent-option bot-option" onclick="selectBotLevel(\'' + gameType + '\', \'' + bot.level + '\')">';
+        html += '<div class="opponent-avatar">' + bot.emoji + '</div>';
+        html += '<div class="opponent-info">';
+        html += '<div class="opponent-name">' + bot.name + ' бот</div>';
+        html += '<div class="opponent-status">' + bot.description + '</div>';
+        html += '</div>';
+        html += '</div>';
+    });
+
+    html += '</div>';
+    html += '</div>';
+
+    // Секция с игроками в комнате
+    html += '<div class="opponent-section">';
+    html += '<h4>👥 Игроки в комнате</h4>';
     html += '<div class="opponent-list">';
-    
-    // Опция игры с ботом
-    html += '<div class="opponent-option bot-option" onclick="selectBot(\'' + gameType + '\')">';
-    html += '<div class="opponent-avatar">🤖</div>';
-    html += '<div class="opponent-info">';
-    html += '<div class="opponent-name">Бот</div>';
-    html += '<div class="opponent-status">Всегда готов к игре</div>';
-    html += '</div>';
-    html += '</div>';
-    
-    // Список игроков в комнате
-    if (window.roomPlayers && window.roomPlayers.length > 1) {
-        window.roomPlayers.forEach(player => {
-            if (player.id !== (window.socket?.id || 'self')) {
-                html += '<div class="opponent-option player-option" onclick="invitePlayer(\'' + player.id + '\', \'' + gameType + '\')">';
-                html += '<div class="opponent-avatar">' + (player.emoji || '👤') + '</div>';
-                html += '<div class="opponent-info">';
-                html += '<div class="opponent-name">' + (player.name || 'Игрок') + '</div>';
-                html += '<div class="opponent-status">Онлайн</div>';
-                html += '</div>';
-                html += '</div>';
-            }
+
+    // Проверяем, есть ли другие игроки
+    const otherPlayers = window.roomPlayers ? window.roomPlayers.filter(p => p.id !== (window.socket?.id || 'self')) : [];
+
+    if (otherPlayers.length > 0) {
+        otherPlayers.forEach(player => {
+            const isInGame = false; // TODO: проверить, находится ли игрок в игре
+            html += '<div class="opponent-option player-option ' + (isInGame ? 'busy' : 'available') + '" onclick="invitePlayer(\'' + player.id + '\', \'' + gameType + '\')">';
+            html += '<div class="opponent-avatar">' + (player.emoji || '👤') + '</div>';
+            html += '<div class="opponent-info">';
+            html += '<div class="opponent-name">' + (player.name || 'Игрок') + '</div>';
+            html += '<div class="opponent-status">' + (isInGame ? 'В игре' : 'Готов к игре') + '</div>';
+            html += '</div>';
+            html += '<div class="opponent-status-indicator ' + (isInGame ? 'busy' : 'online') + '"></div>';
+            html += '</div>';
         });
     } else {
-        html += '<div class="no-players">В комнате нет других игроков. Играйте с ботом!</div>';
+        html += '<div class="no-players">';
+        html += '<div class="no-players-icon">👤❓</div>';
+        html += '<div class="no-players-text">В комнате нет других игроков</div>';
+        html += '<div class="no-players-subtext">Пригласите друзей или играйте с ботом!</div>';
+        html += '</div>';
     }
-    
+
     html += '</div>';
     html += '</div>';
-    
+
+    html += '</div>'; // Закрываем opponent-sections
+    html += '</div>';
+
     modal.innerHTML = html;
     document.body.appendChild(modal);
-    
+
     // Анимация появления
     setTimeout(() => {
         modal.style.opacity = '1';
@@ -198,7 +277,36 @@ function closeOpponentSelector() {
 }
 
 function selectBot(gameType) {
-    window.currentOpponent = { type: 'bot', name: 'Бот', emoji: '🤖' };
+    // По умолчанию выбираем среднего бота для обратной совместимости
+    selectBotLevel(gameType, 'medium');
+}
+
+function selectBotLevel(gameType, level) {
+    let botEmoji = '🤖';
+    let botName = 'Бот';
+
+    switch(level) {
+        case 'easy':
+            botEmoji = '🐣';
+            botName = 'Легкий бот';
+            break;
+        case 'medium':
+            botEmoji = '😐';
+            botName = 'Средний бот';
+            break;
+        case 'hard':
+            botEmoji = '💪';
+            botName = 'Сложный бот';
+            break;
+    }
+
+    window.currentOpponent = {
+        type: 'bot',
+        level: level,
+        name: botName,
+        emoji: botEmoji
+    };
+
     closeOpponentSelector();
     startGameWithOpponent(gameType);
 }
