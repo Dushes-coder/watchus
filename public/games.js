@@ -70,7 +70,68 @@ if (window.socket) {
     window.socket.on('game-invitation-response', (data) => {
         handleInvitationResponse(data);
     });
+
+    // Обработчики для сетевых игр
+    window.socket.on('game-started', ({ gameType, players, roomId }) => {
+        console.log('Network game started:', gameType, 'in room:', roomId);
+        window.currentGame = gameType;
+        window.gameState = {
+            gameType: gameType,
+            players: players,
+            currentPlayer: 0,
+            gameStarted: true
+        };
+
+        // Запускаем соответствующую игру
+        switch (gameType) {
+            case 'tictactoe':
+                initNetworkTicTacToe();
+                break;
+            case 'chess':
+                initNetworkChess();
+                break;
+            case 'poker':
+                initNetworkPoker();
+                break;
+            case 'cards':
+                initNetworkCards();
+                break;
+        }
+    });
+
+    window.socket.on('game-move', ({ gameType, move, playerId }) => {
+        console.log('Received game move:', move, 'from player:', playerId);
+
+        // Обновляем состояние игры и перерисовываем
+        if (gameType === 'tictactoe') {
+            handleNetworkTicTacToeMove(move);
+        } else if (gameType === 'chess') {
+            handleNetworkChessMove(move);
+        } else if (gameType === 'poker') {
+            handleNetworkPokerMove(move);
+        } else if (gameType === 'cards') {
+            handleNetworkCardsMove(move);
+        }
+    });
+
+    window.socket.on('game-ended', ({ winner, gameType }) => {
+        console.log('Game ended, winner:', winner);
+        window.gameState.gameOver = true;
+        window.gameState.winner = winner;
+
+        // Показываем сообщение о завершении
+        if (gameType === 'tictactoe') {
+            updateTicTacToeStatus();
+        } else if (gameType === 'chess') {
+            updateChessStatus();
+        } else if (gameType === 'poker') {
+            window.gameState.gamePhase = 'finished';
+            window.gameState.winner = winner;
+            renderPokerGame();
+        }
+    });
 }
+
 
 // Показать модальное окно выбора соперника
 function showOpponentSelector(gameType) {
@@ -168,6 +229,7 @@ function showGameInvitation(data) {
     switch(data.gameType) {
         case 'chess': gameIcon = '♟️'; gameName = 'Шахматы'; break;
         case 'tictactoe': gameIcon = '⭕'; gameName = 'Крестики-нолики'; break;
+        case 'poker': gameIcon = '🃏'; gameName = 'Покер'; break;
         case 'cards': gameIcon = '🃏'; gameName = 'Карты'; break;
     }
     
@@ -278,6 +340,9 @@ function startGameWithOpponent(gameType) {
         case 'tictactoe':
             openGame('tictactoe');
             break;
+        case 'poker':
+            openGame('poker');
+            break;
         case 'cards':
             openGame('cards');
             break;
@@ -317,19 +382,94 @@ function updateOpponentSelector() {
 
 // Game Functions
 function openGame(game) {
+    // Если пользователь уже в комнате, проверим наличие других игроков
+    if (window.roomId && window.socket) {
+        // Получаем количество других игроков в комнате (исключая себя)
+        const otherPlayers = window.roomPlayers.filter(p => p.id !== (window.socket?.id || 'self'));
+
+        if (otherPlayers.length === 0) {
+            // В комнате нет других игроков - автоматически выбираем бота
+            console.log('No other players in room, auto-selecting bot');
+            window.currentOpponent = { type: 'bot', name: 'Бот', emoji: '🤖' };
+            showNotification('В комнате нет других игроков. Играем с ботом! 🤖', 'info');
+            startGameDirectly(game);
+            return;
+        } else {
+            // В комнате есть другие игроки - показываем селектор соперников
+            console.log('Other players found in room, showing opponent selector');
+            // Обновляем список игроков в комнате
+            updateRoomPlayers();
+
+            // Показываем селектор соперника
+            setTimeout(() => {
+                showOpponentSelector(game);
+            }, 100);
+            return;
+        }
+    }
+
     // Если соперник уже выбран, запускаем игру напрямую
     if (window.currentOpponent) {
         startGameDirectly(game);
         return;
     }
-    
+
     // Обновляем список игроков в комнате
     updateRoomPlayers();
-    
+
     // Показываем селектор соперника
     setTimeout(() => {
         showOpponentSelector(game);
     }, 100);
+}
+
+function startNetworkGame(game) {
+    console.log('Starting network game:', game);
+    window.currentGame = game;
+
+    // Инициализируем базовое состояние игры
+    window.gameState = {
+        gameType: game,
+        players: [],
+        currentPlayer: 0,
+        gameStarted: false
+    };
+
+    // Отправляем запрос на начало игры в комнате
+    if (window.socket && window.roomId) {
+        window.socket.emit('start-game', {
+            roomId: window.roomId,
+            gameType: game
+        });
+    }
+
+    // Показываем панель игры
+    const panel = document.getElementById('activeGamePanel');
+    if (panel) {
+        const icon = document.getElementById('activeGameIcon');
+        const title = document.getElementById('activeGameTitle');
+        if (icon && title) {
+            if (game === 'chess') { icon.textContent = '♟️'; title.textContent = 'Шахматы (сетевая)'; }
+            else if (game === 'tictactoe') { icon.textContent = '⭕'; title.textContent = 'Крестики-нолики (сетевая)'; }
+            else if (game === 'cards') { icon.textContent = '🃏'; title.textContent = 'Карты (сетевая)'; }
+        }
+        panel.classList.remove('hidden');
+        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // Показываем сообщение об ожидании
+    const container = document.getElementById('gameContainer');
+    if (container) {
+        container.innerHTML = `
+            <div class="game-waiting">
+                <h3>Ожидание начала игры...</h3>
+                <p>Другие игроки в комнате смогут присоединиться к игре</p>
+                <div class="game-controls">
+                    <button onclick="closeGame()">Отмена</button>
+                </div>
+            </div>
+        `;
+    }
 }
 
 function startGameDirectly(game) {
@@ -362,6 +502,9 @@ function startGameDirectly(game) {
             case 'tictactoe':
                 initTicTacToe();
                 break;
+            case 'poker':
+                startPoker();
+                break;
             case 'cards':
                 initCards();
                 break;
@@ -372,6 +515,15 @@ function startGameDirectly(game) {
 function closeGame() {
     const panel = document.getElementById('activeGamePanel');
     if (panel) panel.classList.add('hidden');
+    
+    // Полностью очищаем состояние игры
+    window.gameState = null;
+    
+    // Очищаем содержимое активной игры
+    const activeGameContent = document.getElementById('activeGameContent');
+    if (activeGameContent) {
+        activeGameContent.innerHTML = '';
+    }
     
     // Восстанавливаем меню игр в gameContainer
     const container = document.getElementById('gameContainer');
@@ -402,7 +554,7 @@ function closeGame() {
         `;
     }
     
-    // Сбрасываем выбранного соперника
+    // Сбрасываем выбранного соперника и текущую игру
     window.currentOpponent = null;
     window.currentGame = null;
 }
@@ -436,7 +588,7 @@ function renderChessBoard() {
     console.log('renderChessBoard called!');
     console.trace('renderChessBoard call stack');
     
-    const container = document.getElementById('gameContainer');
+    const container = document.getElementById('activeGameContent');
     if (!container) return;
     
     let html = '';
@@ -851,12 +1003,9 @@ function updateChessStatus() {
     }
 }
 
-// Tic Tac Toe Game
 function initTicTacToe() {
-    // Инициализируем счётчики, если их ещё нет
-    if (!window.tttScore) {
-        window.tttScore = { X: 0, O: 0, draws: 0 };
-    }
+    console.log('initTicTacToe called!');
+    console.trace('initTicTacToe call stack');
     
     window.gameState = {
         board: [
@@ -872,9 +1021,155 @@ function initTicTacToe() {
     renderTicTacToeBoard();
 }
 
-function renderTicTacToeBoard() {
-    const gamePanel = document.getElementById('gameContainer');
+function initNetworkTicTacToe() {
+    window.gameState = {
+        board: [
+            ['', '', ''],
+            ['', '', ''],
+            ['', '', '']
+        ],
+        currentPlayer: 'X',
+        gameOver: false,
+        winner: null,
+        players: window.gameState.players || [],
+        gameType: 'tictactoe'
+    };
+
+    renderTicTacToeBoard();
+}
+
+function initNetworkChess() {
+    window.gameState = {
+        board: [
+            ['br', 'bn', 'bb', 'bq', 'bk', 'bb', 'bn', 'br'],
+            ['bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp'],
+            ['', '', '', '', '', '', '', ''],
+            ['', '', '', '', '', '', '', ''],
+            ['', '', '', '', '', '', '', ''],
+            ['', '', '', '', '', '', '', ''],
+            ['wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp'],
+            ['wr', 'wn', 'wb', 'wq', 'wk', 'wb', 'wn', 'wr']
+        ],
+        currentPlayer: 'white',
+        selectedCell: null,
+        check: false,
+        checkmate: false,
+        players: window.gameState.players || [],
+        gameType: 'chess'
+    };
+
+    renderChessBoard();
+}
+
+function initNetworkPoker() {
+    window.gameState = {
+        gameMode: 'poker',
+        deck: [],
+        playerHand: [],
+        opponentHand: [],
+        playerScore: 0,
+        opponentScore: 0,
+        currentPlayer: 'player',
+        round: 1,
+        gamePhase: 'exchange',
+        players: window.gameState.players || [],
+        gameType: 'poker'
+    };
+
+    renderPokerGame();
+}
+
+function handleNetworkTicTacToeMove(move) {
+    const { row, col, player } = move;
+
+    if (window.gameState.board[row][col] === '') {
+        window.gameState.board[row][col] = player;
+        window.gameState.currentPlayer = player === 'X' ? 'O' : 'X';
+
+        // Проверяем победителя
+        checkTicTacToeWinner();
+        renderTicTacToeBoard();
+
+        // Если игра окончена, отправляем уведомление
+        if (window.gameState.gameOver) {
+            if (window.socket && window.roomId) {
+                window.socket.emit('game-ended', {
+                    roomId: window.roomId,
+                    winner: window.gameState.winner,
+                    gameType: 'tictactoe'
+                });
+            }
+        }
+    }
+}
+
+function handleNetworkChessMove(move) {
+    const { from, to } = move;
+
+    if (isValidMoveCell(from.row, from.col, to.row, to.col)) {
+        const movingPiece = window.gameState.board[from.row][from.col];
+        window.gameState.board[from.row][from.col] = '';
+        window.gameState.board[to.row][to.col] = movingPiece;
+        window.gameState.selectedCell = null;
+        window.gameState.currentPlayer = window.gameState.currentPlayer === 'white' ? 'black' : 'white';
+
+        renderChessBoard();
+
+        // Проверяем мат
+        // (упрощенная проверка - в реальности нужна более сложная логика)
+        if (window.gameState.checkmate) {
+            if (window.socket && window.roomId) {
+                const winner = window.gameState.currentPlayer === 'white' ? 'black' : 'white';
+                window.socket.emit('game-ended', {
+                    roomId: window.roomId,
+                    winner: winner,
+                    gameType: 'chess'
+                });
+            }
+        }
+    }
+}
+
+function handleNetworkCardsMove(move) {
+    const { action, card, playerIndex } = move;
+
+    if (action === 'play' && card) {
+        // Удаляем карту из руки
+        const handIndex = window.gameState.player1Hand.findIndex(c =>
+            c.suit === card.suit && c.value === card.value
+        );
+        if (handIndex !== -1) {
+            window.gameState.player1Hand.splice(handIndex, 1);
+            window.gameState.tableCards.push(card);
+            window.gameState.currentPlayer = 'player2';
+        }
+    } else if (action === 'draw') {
+        // Берем карты из колоды
+        while (window.gameState.player1Hand.length < 6 && window.gameState.deck.length > 0) {
+            window.gameState.player1Hand.push(window.gameState.deck.pop());
+        }
+    }
+}
+
+function handleNetworkPokerMove(move) {
+    const { action, cardIndex, playerId } = move;
     
+    if (action === 'exchange' && cardIndex !== undefined) {
+        // Игрок обменял карту
+        if (window.gameState.deck.length > 0) {
+            window.gameState.opponentHand[cardIndex] = window.gameState.deck.pop();
+            renderPokerGame();
+        }
+    } else if (action === 'check') {
+        // Игрок проверил комбинацию - запускаем проверку для обоих игроков
+        // Устанавливаем фазу ожидания
+        window.gameState.gamePhase = 'waiting';
+        checkPokerHand();
+    }
+}
+
+    
+function renderTicTacToeBoard() {
     // Инициализируем счётчики, если их ещё нет
     if (!window.tttScore) {
         window.tttScore = { X: 0, O: 0, draws: 0 };
@@ -914,6 +1209,7 @@ function renderTicTacToeBoard() {
     html += '<button onclick="closeGame()">Закрыть</button>';
     html += '</div>';
 
+    const gamePanel = document.getElementById('activeGameContent');
     gamePanel.innerHTML = html;
 
     // Добавляем обработчики событий
@@ -1170,21 +1466,30 @@ function updateScoreDisplay() {
     }
 }
 
-function startNewTicTacToeGame() {
-    // Сбрасываем состояние игры
+function startNewPokerGame() {
+    console.log('startNewPokerGame called');
+    
+    // Полностью сбрасываем состояние игры
     window.gameState = {
-        board: [
-            ['', '', ''],
-            ['', '', ''],
-            ['', '', '']
-        ],
-        currentPlayer: 'X',
-        gameOver: false,
+        gameMode: 'poker',
+        deck: [],
+        playerHand: [],
+        opponentHand: [],
+        playerScore: 0,
+        opponentScore: 0,
+        currentPlayer: 'player',
+        round: 1,
+        gamePhase: 'exchange',
         winner: null
     };
     
-    // Перерисовываем доску
-    renderTicTacToeBoard();
+    createDeck();
+    shuffleDeck();
+    dealPokerCards();
+    renderPokerGame();
+    
+    // Показываем уведомление
+    showNotification('🎮 Начата новая игра в покер!', 'info');
 }
 
 // Cards Game - Покер и Дурак
@@ -1219,8 +1524,6 @@ function renderCardsMenu() {
     }
     
     const gamePanel = document.getElementById('gameContainer');
-    console.log('gamePanel:', gamePanel); // Проверяем, найден ли элемент
-    if (!gamePanel) return;
     
     let html = '<div class="cards-menu">';
     
@@ -1277,7 +1580,10 @@ function startPoker() {
         opponentHand: [],
         playerScore: window.gameState?.playerScore || 0,
         opponentScore: window.gameState?.opponentScore || 0,
-        currentPlayer: 'player'
+        currentPlayer: 'player',
+        round: window.gameState?.round || 1,
+        gamePhase: 'exchange', // 'exchange' или 'finished'
+        winner: null
     };
     
     createDeck();
@@ -1466,7 +1772,7 @@ function renderPokerGame() {
         document.getElementById('activeGameIcon').textContent = '🃏';
     }
     
-    const gamePanel = document.getElementById('gameContainer');
+    const gamePanel = document.getElementById('activeGameContent');
     if (!gamePanel) return;
     
     let html = '<div class="poker-game">';
@@ -1482,23 +1788,88 @@ function renderPokerGame() {
     
     html += '<h3>🃏 Покер</h3>';
     html += '<div class="game-info">';
+    html += '<div>Раунд: <strong>' + window.gameState.round + '</strong></div>';
     html += '<div>Ваш счёт: ' + window.gameState.playerScore + '</div>';
     html += '<div>Счёт противника: ' + window.gameState.opponentScore + '</div>';
     html += '</div>';
     
-    // Карты противника (вверху, закрыты)
+    // Карты противника (вверху)
     html += '<div class="opponent-cards">';
     html += '<h4>Карты противника:</h4>';
     html += '<div class="cards-hand opponent-hand">';
     for (let i = 0; i < window.gameState.opponentHand.length; i++) {
-        html += '<div class="card card-back">🂠</div>';
+        if (window.gameState.gamePhase === 'waiting' || window.gameState.gamePhase === 'finished') {
+            // Показываем открытые карты противника после проверки комбинации
+            const card = window.gameState.opponentHand[i];
+            const suitClass = getSuitClass(card.suit);
+            html += '<div class="card ' + suitClass + ' revealed" data-index="' + i + '">';
+            html += '<div class="card-value">' + card.value + '</div>';
+            html += '<div class="card-suit">' + card.suit + '</div>';
+            html += '</div>';
+        } else {
+            // В фазе обмена карты противника закрыты
+            html += '<div class="card card-back">🂠</div>';
+        }
     }
     html += '</div>';
     html += '</div>';
     
     // Центральная область (для показа комбинаций или обмена)
     html += '<div class="poker-center">';
-    html += '<div class="poker-status">Выберите карты для обмена или проверьте комбинацию</div>';
+    if (window.gameState.gamePhase === 'finished') {
+        const winner = window.gameState.winner;
+        html += '<div class="game-result">';
+        if (winner === 'player') {
+            html += '<div style="color: #28a745; font-size: 24px; font-weight: bold;">🎉 Вы выиграли игру!</div>';
+        } else if (winner === 'opponent') {
+            html += '<div style="color: #dc3545; font-size: 24px; font-weight: bold;">😞 Противник выиграл игру!</div>';
+        } else {
+            html += '<div style="color: #ffc107; font-size: 24px; font-weight: bold;">🤝 Ничья в игре!</div>';
+        }
+        html += '<div style="margin-top: 10px;">Игра окончена. Первый, кто набрал 10 очков, побеждает!</div>';
+        html += '</div>';
+    } else if (window.gameState.gamePhase === 'waiting') {
+        // Показываем стол с картами
+        html += '<div class="poker-table">';
+        html += '<div class="table-title">Сравнение комбинаций</div>';
+        
+        // Карты игрока на столе
+        html += '<div class="table-player-cards">';
+        html += '<div class="player-label">Ваши карты:</div>';
+        html += '<div class="table-cards-row">';
+        for (let i = 0; i < window.gameState.playerHand.length; i++) {
+            const card = window.gameState.playerHand[i];
+            const suitClass = getSuitClass(card.suit);
+            html += '<div class="card ' + suitClass + ' on-table" data-index="' + i + '">';
+            html += '<div class="card-value">' + card.value + '</div>';
+            html += '<div class="card-suit">' + card.suit + '</div>';
+            html += '</div>';
+        }
+        html += '</div>';
+        html += '</div>';
+        
+        // Карты противника на столе
+        html += '<div class="table-opponent-cards">';
+        html += '<div class="opponent-label">Карты противника:</div>';
+        html += '<div class="table-cards-row">';
+        for (let i = 0; i < window.gameState.opponentHand.length; i++) {
+            const card = window.gameState.opponentHand[i];
+            const suitClass = getSuitClass(card.suit);
+            html += '<div class="card ' + suitClass + ' on-table" data-index="' + i + '">';
+            html += '<div class="card-value">' + card.value + '</div>';
+            html += '<div class="card-suit">' + card.suit + '</div>';
+            html += '</div>';
+        }
+        html += '</div>';
+        html += '</div>';
+        
+        html += '</div>';
+        
+        // Добавляем область для показа результата
+        html += '<div class="poker-status">Определяем победителя...</div>';
+    } else if (window.gameState.gamePhase === 'exchange') {
+        html += '<div class="poker-status">Выберите карты для обмена или проверьте комбинацию</div>';
+    }
     html += '</div>';
     
     // Ваши карты (внизу)
@@ -1508,7 +1879,8 @@ function renderPokerGame() {
     for (let i = 0; i < window.gameState.playerHand.length; i++) {
         const card = window.gameState.playerHand[i];
         const suitClass = getSuitClass(card.suit);
-        html += '<div class="card ' + suitClass + '" data-index="' + i + '">';
+        const isSelected = card.selected ? ' selected' : '';
+        html += '<div class="card ' + suitClass + isSelected + '" data-index="' + i + '">';
         html += '<div class="card-value">' + card.value + '</div>';
         html += '<div class="card-suit">' + card.suit + '</div>';
         html += '</div>';
@@ -1518,9 +1890,16 @@ function renderPokerGame() {
     
     // Кнопки управления
     html += '<div class="poker-controls">';
-    html += '<button onclick="exchangeCards()" class="action-btn">Обменять выбранные</button>';
-    html += '<button onclick="checkPokerHand()" class="action-btn">Проверить комбинацию</button>';
-    html += '<button onclick="newPokerRound()" class="action-btn">Новая раздача</button>';
+    if (window.gameState.gamePhase === 'finished') {
+        html += '<button onclick="startNewPokerGame()" class="action-btn">🎮 Новая игра</button>';
+    } else if (window.gameState.gamePhase === 'exchange') {
+        html += '<button onclick="exchangeCards()" class="action-btn">Обменять выбранные</button>';
+        html += '<button onclick="checkPokerHand()" class="action-btn">Проверить комбинацию</button>';
+        html += '<button onclick="newPokerRound()" class="action-btn">Новый раунд</button>';
+    } else if (window.gameState.gamePhase === 'waiting') {
+        // Фаза ожидания следующего раунда - кнопки отключены
+        html += '<button disabled class="action-btn" style="opacity: 0.5;">Подготовка...</button>';
+    }
     html += '<button onclick="backToMenu()" class="back-btn">Назад к меню</button>';
     html += '</div>';
     
@@ -1751,11 +2130,14 @@ function getSuitClass(suit) {
     }
 }
 
-// Покер функции
 function addPokerCardHandlers() {
     const cards = document.querySelectorAll('.player-cards .card');
     cards.forEach(card => {
         card.addEventListener('click', function() {
+            // Убираем выделение у всех карт
+            cards.forEach(c => c.classList.remove('selected'));
+            
+            // Переключаем выделение только этой карты
             this.classList.toggle('selected');
         });
     });
@@ -1763,33 +2145,84 @@ function addPokerCardHandlers() {
 
 function exchangeCards() {
     const selectedCards = document.querySelectorAll('.player-cards .card.selected');
-    if (selectedCards.length === 0 || selectedCards.length > 3) {
+    if (selectedCards.length === 0) {
         // Показываем сообщение в центральной области
         const statusElement = document.querySelector('.poker-status');
         if (statusElement) {
-            statusElement.innerHTML = '<div style="color: #dc3545;">Выберите от 1 до 3 карт для обмена</div>';
+            statusElement.innerHTML = '<div style="color: #dc3545;">Выберите карту для обмена</div>';
         }
         return;
     }
     
-    // Заменяем выбранные карты
-    selectedCards.forEach(cardElement => {
-        const index = parseInt(cardElement.dataset.index);
-        if (window.gameState.deck.length > 0) {
-            window.gameState.playerHand[index] = window.gameState.deck.pop();
+    // Меняем только одну выбранную карту
+    const selectedCard = selectedCards[0];
+    const index = parseInt(selectedCard.dataset.index);
+    
+    if (window.gameState.deck.length > 0) {
+        window.gameState.playerHand[index] = window.gameState.deck.pop();
+        
+        // Отправляем ход на сервер, если играем с игроком
+        if (window.socket && window.roomId && window.currentOpponent?.type === 'player') {
+            window.socket.emit('game-move', {
+                roomId: window.roomId,
+                gameType: 'poker',
+                move: {
+                    action: 'exchange',
+                    cardIndex: index
+                }
+            });
         }
-    });
-    
-    // Показываем информацию об обмене
-    const statusElement = document.querySelector('.poker-status');
-    if (statusElement) {
-        statusElement.innerHTML = `<div style="color: #28a745;">Обменено ${selectedCards.length} карт(ы). Теперь проверьте комбинацию!</div>`;
+        
+        // Показываем информацию об обмене
+        const statusElement = document.querySelector('.poker-status');
+        if (statusElement) {
+            statusElement.innerHTML = '<div style="color: #28a745;">Карта обменяна! Теперь проверьте комбинацию.</div>';
+        }
+        
+        renderPokerGame();
+    } else {
+        const statusElement = document.querySelector('.poker-status');
+        if (statusElement) {
+            statusElement.innerHTML = '<div style="color: #dc3545;">В колоде нет карт для обмена</div>';
+        }
     }
+}
+
+function getPokerCombination(hand) {
+    const values = hand.map(card => card.power).sort((a, b) => a - b);
+    const suits = hand.map(card => card.suit);
     
-    renderPokerGame();
+    // Проверяем комбинации
+    const isFlush = suits.every(suit => suit === suits[0]);
+    const isStraight = values.every((val, i) => i === 0 || val === values[i-1] + 1);
+    
+    const valueCounts = {};
+    values.forEach(val => valueCounts[val] = (valueCounts[val] || 0) + 1);
+    const counts = Object.values(valueCounts).sort((a, b) => b - a);
+    
+    if (isFlush && isStraight) return { name: 'Стрит-флеш', rank: 8 };
+    if (counts[0] === 4) return { name: 'Каре', rank: 7 };
+    if (counts[0] === 3 && counts[1] === 2) return { name: 'Фул-хаус', rank: 6 };
+    if (isFlush) return { name: 'Флеш', rank: 5 };
+    if (isStraight) return { name: 'Стрит', rank: 4 };
+    if (counts[0] === 3) return { name: 'Тройка', rank: 3 };
+    if (counts[0] === 2 && counts[1] === 2) return { name: 'Две пары', rank: 2 };
+    if (counts[0] === 2) return { name: 'Пара', rank: 1 };
+    return { name: 'Старшая карта', rank: 0 };
 }
 
 function checkPokerHand() {
+    // Отправляем событие проверки комбинации, если играем с игроком
+    if (window.socket && window.roomId && window.currentOpponent?.type === 'player') {
+        window.socket.emit('game-move', {
+            roomId: window.roomId,
+            gameType: 'poker',
+            move: {
+                action: 'check'
+            }
+        });
+    }
+    
     const combination = getPokerCombination(window.gameState.playerHand);
     
     // Если играем с ботом, генерируем комбинацию для бота
@@ -1804,27 +2237,102 @@ function checkPokerHand() {
     
     let result = '';
     if (combination.rank > opponentCombination.rank) {
-        result = 'Вы выиграли!';
+        result = 'Вы выиграли раунд!';
         window.gameState.playerScore++;
     } else if (combination.rank < opponentCombination.rank) {
-        result = 'Противник выиграл!';
+        result = 'Противник выиграл раунд!';
         window.gameState.opponentScore++;
     } else {
-        result = 'Ничья!';
+        result = 'Ничья в раунде!';
     }
+    
+    // Проверяем, не закончилась ли игра
+    const WINNING_SCORE = 10;
+    if (window.gameState.playerScore >= WINNING_SCORE) {
+        window.gameState.gamePhase = 'finished';
+        window.gameState.winner = 'player';
+        
+        // Отправляем событие завершения игры
+        if (window.socket && window.roomId && window.currentOpponent?.type === 'player') {
+            window.socket.emit('game-ended', {
+                roomId: window.roomId,
+                winner: 'player',
+                gameType: 'poker'
+            });
+        }
+    } else if (window.gameState.opponentScore >= WINNING_SCORE) {
+        window.gameState.gamePhase = 'finished';
+        window.gameState.winner = 'opponent';
+        
+        // Отправляем событие завершения игры
+        if (window.socket && window.roomId && window.currentOpponent?.type === 'player') {
+            window.socket.emit('game-ended', {
+                roomId: window.roomId,
+                winner: 'opponent',
+                gameType: 'poker'
+            });
+        }
+    } else {
+        // Игра продолжается - устанавливаем фазу ожидания
+        window.gameState.gamePhase = 'waiting';
+    }
+    
+    // Сначала показываем стол с картами
+    renderPokerGame();
+    
+    // Сохраняем результаты для показа через 2 секунды
+    window.gameState.lastResult = {
+        combination,
+        opponentCombination,
+        result
+    };
+    
+    // Через 2 секунды показываем результат
+    setTimeout(() => {
+        showPokerResult();
+    }, 2000);
+}
+
+function showPokerResult() {
+    if (!window.gameState.lastResult) return;
+    
+    const { combination, opponentCombination, result } = window.gameState.lastResult;
     
     // Показываем результат в центральной области
     const statusElement = document.querySelector('.poker-status');
     if (statusElement) {
-        statusElement.innerHTML = `
-            <div style="margin-bottom: 10px;"><strong>Результат раунда:</strong></div>
-            <div>Ваша комбинация: <span style="color: var(--accent-primary);">${combination.name}</span></div>
-            <div>Комбинация противника: <span style="color: var(--accent-primary);">${opponentCombination.name}</span></div>
-            <div style="margin-top: 10px; font-size: 18px; font-weight: bold; color: ${result === 'Вы выиграли!' ? '#28a745' : result === 'Противник выиграл!' ? '#dc3545' : '#ffc107'};">${result}</div>
-        `;
+        if (window.gameState.gamePhase === 'finished') {
+            // Игра окончена - показываем финальный результат
+            statusElement.innerHTML = `
+                <div style="margin-bottom: 10px;"><strong>Результат раунда ${window.gameState.round}:</strong></div>
+                <div>Ваша комбинация: <span style="color: var(--accent-primary);">${combination.name}</span></div>
+                <div>Комбинация противника: <span style="color: var(--accent-primary);">${opponentCombination.name}</span></div>
+                <div style="margin-top: 20px; font-size: 32px; font-weight: bold; color: ${result.includes('Вы выиграли') ? '#28a745' : result.includes('Противник выиграл') ? '#dc3545' : '#ffc107'};">${result.includes('Вы выиграли') ? 'ПОБЕДА!' : result.includes('Противник выиграл') ? 'ПОРАЖЕНИЕ!' : 'НИЧЬЯ!'}</div>
+                <div style="margin-top: 10px; color: #666;">Новый раунд через 3 секунды...</div>
+            `;
+            
+            // Автоматически начинаем новый раунд через 3 секунды
+            setTimeout(() => {
+                newPokerRound();
+            }, 3000);
+        } else {
+            // Обычный раунд - показываем результат и ждем действий игрока
+            statusElement.innerHTML = `
+                <div style="margin-bottom: 10px;"><strong>Результат раунда ${window.gameState.round}:</strong></div>
+                <div>Ваша комбинация: <span style="color: var(--accent-primary);">${combination.name}</span></div>
+                <div>Комбинация противника: <span style="color: var(--accent-primary);">${opponentCombination.name}</span></div>
+                <div style="margin-top: 20px; font-size: 32px; font-weight: bold; color: ${result.includes('Вы выиграли') ? '#28a745' : result.includes('Противник выиграл') ? '#dc3545' : '#ffc107'};">${result.includes('Вы выиграли') ? 'ПОБЕДА!' : result.includes('Противник выиграл') ? 'ПОРАЖЕНИЕ!' : 'НИЧЬЯ!'}</div>
+                <div style="margin-top: 10px; color: #666;">Новый раунд через 3 секунды...</div>
+            `;
+            
+            // Автоматически начинаем новый раунд через 3 секунды
+            setTimeout(() => {
+                newPokerRound();
+            }, 3000);
+        }
     }
     
-    renderPokerGame();
+    // Не вызываем renderPokerGame() здесь, чтобы не перезаписать результат
 }
 
 function makePokerBotMove() {
@@ -1855,30 +2363,18 @@ function makePokerBotMove() {
     }
 }
 
-function getPokerCombination(hand) {
-    const values = hand.map(card => card.power).sort((a, b) => a - b);
-    const suits = hand.map(card => card.suit);
-    
-    // Проверяем комбинации
-    const isFlush = suits.every(suit => suit === suits[0]);
-    const isStraight = values.every((val, i) => i === 0 || val === values[i-1] + 1);
-    
-    const valueCounts = {};
-    values.forEach(val => valueCounts[val] = (valueCounts[val] || 0) + 1);
-    const counts = Object.values(valueCounts).sort((a, b) => b - a);
-    
-    if (isFlush && isStraight) return { name: 'Стрит-флеш', rank: 8 };
-    if (counts[0] === 4) return { name: 'Каре', rank: 7 };
-    if (counts[0] === 3 && counts[1] === 2) return { name: 'Фул-хаус', rank: 6 };
-    if (isFlush) return { name: 'Флеш', rank: 5 };
-    if (isStraight) return { name: 'Стрит', rank: 4 };
-    if (counts[0] === 3) return { name: 'Тройка', rank: 3 };
-    if (counts[0] === 2 && counts[1] === 2) return { name: 'Две пары', rank: 2 };
-    if (counts[0] === 2) return { name: 'Пара', rank: 1 };
-    return { name: 'Старшая карта', rank: 0 };
-}
-
 function newPokerRound() {
+    if (window.gameState.gamePhase === 'finished') {
+        // Игра окончена, начинаем новую игру
+        startNewPokerGame();
+        return;
+    }
+    
+    // Увеличиваем счетчик раундов
+    window.gameState.round++;
+    // Сбрасываем фазу к обмену карт
+    window.gameState.gamePhase = 'exchange';
+    
     createDeck();
     shuffleDeck();
     dealPokerCards();
@@ -2805,7 +3301,8 @@ function newDurakRound() {
 
 function backToMenu() {
     window.gameState.gameMode = 'menu';
-    renderCardsMenu();
+    // Закрываем панель активной игры и возвращаемся в главное меню
+    closeGame();
 }
 
 function handleCardClick(e) {
@@ -2923,7 +3420,6 @@ try {
     window.newDurakRound = newDurakRound;
     window.finishDurakRound = finishDurakRound;
     window.backToMenu = backToMenu;
-    window.startNewTicTacToeGame = startNewTicTacToeGame;
     window.showOpponentSelector = showOpponentSelector;
     window.closeOpponentSelector = closeOpponentSelector;
     window.selectBot = selectBot;
@@ -2944,4 +3440,8 @@ try {
     window.validateBotAction = validateBotAction;
     window.durakAnalyzer = window.durakAnalyzer;
     window.testDurak = testDurak;
-} catch (e) { }
+    window.startNewPokerGame = startNewPokerGame;
+    window.showPokerResult = showPokerResult;
+} catch (e) { 
+    console.warn('Error exporting functions to global scope:', e);
+}

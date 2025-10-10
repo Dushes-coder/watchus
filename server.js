@@ -5,7 +5,26 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+
+// Улучшенная конфигурация CORS
+const io = new Server(server, {
+    cors: {
+        origin: (origin, callback) => {
+            // Разрешаем все источники, включая file:// и chrome-extension://
+            callback(null, true);
+        },
+        methods: ["GET", "POST"],
+        credentials: true
+    },
+    allowEIO3: true
+});
+
+// Middleware для CORS
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+    next();
+});
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -19,7 +38,22 @@ const roomStates = new Map();
 const gameStates = new Map();
 
 io.on('connection', (socket) => {
-	console.log('user connected', socket.id);
+	console.log('New client connected:', socket.id);
+	
+	// Отправляем пинг каждые 25 секунд
+	const pingInterval = setInterval(() => {
+		socket.emit('ping', { time: Date.now() });
+	}, 25000);
+
+	// Ожидаем понга от клиента
+	socket.on('pong', (data) => {
+		console.log('Pong received from', socket.id, 'latency:', Date.now() - data.time, 'ms');
+	});
+
+	socket.on('disconnect', () => {
+		console.log('Client disconnected:', socket.id);
+		clearInterval(pingInterval);
+	});
 
 	socket.on('join-room', ({ roomId }) => {
 		socket.join(roomId);
