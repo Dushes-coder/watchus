@@ -54,10 +54,7 @@
                     </div>
                 </div>
                 <div class="header-center">
-                    <div class="connection-indicator">
-                        <span class="connection-dot" id="headerConnectionDot"></span>
-                        <span class="connection-label" id="headerConnectionLabel">Подключение...</span>
-                    </div>
+                    <!-- Connection indicator moved to header-right -->
                 </div>
                 <div class="header-right">
                     <button class="header-btn camera-toggle" id="cameraToggle" title="Показать/скрыть видеосвязь">
@@ -180,12 +177,13 @@
         <!-- Right Panel: Games -->
         <div class="right-panel">
             <!-- Games Section -->
-            <div class="panel">
+            <div class="panel collapsible" id="gamesPanel">
                 <div class="panel-header">
                     <div class="panel-title">
                         <span class="icon">🎮</span>
                         <span>Игры</span>
                     </div>
+                    <button class="secondary icon-btn toggle-panel" onclick="toggleGamesPanel()" title="Свернуть/развернуть">−</button>
                 </div>
                 <div id="gameContainer">
                     <h2>🎮 Игры</h2>
@@ -256,7 +254,6 @@
                     <input type="range" id="remoteVolume" min="0" max="1" step="0.1" value="1" class="volume-slider" title="Громкость видеосвязи">
                 </div>
                 <button id="pipBtn" class="secondary" title="Picture-in-Picture">🗔</button>
-                <button id="toggleSelf" class="secondary" title="Показать/скрыть себя">👤</button>
             </div>
         </div>
         <div class="fc-body">
@@ -268,12 +265,55 @@
         <div class="resize-handle rh-corner"></div>
     </div>
 
+    <script>
+        // Обработчик переключения темы
+        document.addEventListener('DOMContentLoaded', function() {
+            const themeToggle = document.getElementById('themeToggle');
+            if (themeToggle) {
+                // Восстанавливаем сохраненную тему
+                try {
+                    const savedTheme = localStorage.getItem('wt_theme');
+                    if (savedTheme === 'light') {
+                        document.body.classList.add('light-theme');
+                        const themeIcon = themeToggle.querySelector('.theme-icon');
+                        if (themeIcon) themeIcon.textContent = '🌙';
+                    } else {
+                        const themeIcon = themeToggle.querySelector('.theme-icon');
+                        if (themeIcon) themeIcon.textContent = '☀️';
+                    }
+                } catch (e) {}
+
+                themeToggle.addEventListener('click', function() {
+                    const body = document.body;
+                    const isLight = body.classList.contains('light-theme');
+                    const themeIcon = this.querySelector('.theme-icon');
+
+                    if (isLight) {
+                        body.classList.remove('light-theme');
+                        body.classList.add('theme-transition');
+                        try { localStorage.setItem('wt_theme', 'dark'); } catch (e) {}
+                        if (themeIcon) themeIcon.textContent = '☀️';
+                    } else {
+                        body.classList.add('light-theme', 'theme-transition');
+                        try { localStorage.setItem('wt_theme', 'light'); } catch (e) {}
+                        if (themeIcon) themeIcon.textContent = '🌙';
+                    }
+
+                    // Удаляем класс анимации через 300ms
+                    setTimeout(() => {
+                        body.classList.remove('theme-transition');
+                    }, 300);
+                });
+            }
+        });
+    </script>
+
     <!-- About Modal -->
     <div id="aboutModal" class="modal-overlay" aria-hidden="true" style="display: none;">
         <div class="modal-content">
             <div class="modal-header">
                 <h3>О проекте Watch Together</h3>
-                <button id="closeAbout" class="secondary icon-btn" aria-label="Закрыть">✕</button>
+                <button id="closeAbout" class="secondary icon-btn" aria-label="Закрыть"></button>
             </div>
             <div class="about-content">
                 <div class="about-hero">
@@ -335,7 +375,7 @@
                 </div>
                 
                 <div class="about-footer">
-                    <p>Создано с ❤️ для любителей кино и игр</p>
+                    <p>Создано AdrewPrishchepa с ❤️ для любителей кино и игр</p>
                     <p class="version">Версия 1.0.0</p>
                 </div>
             </div>
@@ -432,95 +472,36 @@
         // Функция для обновления статуса подключения в хедере
         function updateHeaderConnectionStatus() {
             const headerDot = document.getElementById('headerConnectionDot');
-            const headerLabel = document.getElementById('headerConnectionLabel');
             const statusEl = document.getElementById('connectionStatus');
+            const indicatorBtn = document.getElementById('connectionIndicator');
 
-            if (!headerDot || !headerLabel || !statusEl) return;
+            if (!headerDot || !indicatorBtn) return;
 
-            const isConnected = statusEl.classList.contains('connected');
-            const isDisconnected = statusEl.classList.contains('disconnected');
+            // Определяем статус подключения (нужно получить из глобального состояния)
+            let isConnected = false;
+            let isDisconnected = false;
+
+            // Проверяем наличие connectionStatus элемента для обратной совместимости
+            if (statusEl) {
+                isConnected = statusEl.classList.contains('connected');
+                isDisconnected = statusEl.classList.contains('disconnected');
+            } else {
+                // Если connectionStatus отсутствует, проверяем глобальные переменные или socket состояние
+                isConnected = window.socket && window.socket.connected;
+                isDisconnected = window.socket && !window.socket.connected;
+            }
 
             if (isConnected) {
                 headerDot.className = 'connection-dot connected';
-                headerLabel.textContent = 'Подключено';
+                indicatorBtn.title = 'Подключено к серверу';
             } else if (isDisconnected) {
                 headerDot.className = 'connection-dot disconnected';
-                headerLabel.textContent = 'Нет соединения';
+                indicatorBtn.title = 'Нет соединения с сервером';
             } else {
                 headerDot.className = 'connection-dot';
-                headerLabel.textContent = 'Подключение...';
+                indicatorBtn.title = 'Подключение к серверу...';
             }
         }
-
-        // Обработчик переключения темы
-        document.addEventListener('DOMContentLoaded', function() {
-            const themeToggle = document.getElementById('themeToggle');
-            const openRoomBtn = document.getElementById('openRoom');
-            if (themeToggle) {
-                // Восстанавливаем сохраненную тему
-                try {
-                    const savedTheme = localStorage.getItem('wt_theme');
-                    if (savedTheme === 'light') {
-                        document.body.classList.add('light-theme');
-                        const themeIcon = themeToggle.querySelector('.theme-icon');
-                        if (themeIcon) themeIcon.textContent = '🌙';
-                    } else {
-                        const themeIcon = themeToggle.querySelector('.theme-icon');
-                        if (themeIcon) themeIcon.textContent = '☀️';
-                    }
-                } catch (e) {}
-
-                themeToggle.addEventListener('click', function() {
-                    const body = document.body;
-                    const isLight = body.classList.contains('light-theme');
-                    const themeIcon = this.querySelector('.theme-icon');
-
-                    if (isLight) {
-                        body.classList.remove('light-theme');
-                        body.classList.add('theme-transition');
-                        try { localStorage.setItem('wt_theme', 'dark'); } catch (e) {}
-                        if (themeIcon) themeIcon.textContent = '☀️';
-                    } else {
-                        body.classList.add('light-theme', 'theme-transition');
-                        try { localStorage.setItem('wt_theme', 'light'); } catch (e) {}
-                        if (themeIcon) themeIcon.textContent = '🌙';
-                    }
-
-                    // Обновляем статус подключения в хедере
-                    setTimeout(updateHeaderConnectionStatus, 50);
-
-                    // Удаляем класс анимации через 300ms
-                    setTimeout(() => {
-                        body.classList.remove('theme-transition');
-                    }, 300);
-                });
-            }
-
-            // Обработчик кнопки комнаты
-            if (openRoomBtn) {
-                openRoomBtn.addEventListener('click', function() {
-                    const roomModal = document.getElementById('roomModal');
-                    if (roomModal) {
-                        roomModal.setAttribute('aria-hidden', 'false');
-                        roomModal.style.display = 'flex';
-                        // Заполняем поля из localStorage при открытии модального окна
-                        try {
-                            const savedRid = localStorage.getItem('wt_room_id') || '';
-                            const savedUrl = localStorage.getItem('wt_video_url') || '';
-                            const roomInput = document.getElementById('roomId');
-                            const urlInput = document.getElementById('videoUrl');
-                            if (roomInput && !roomInput.value) roomInput.value = savedRid;
-                            if (urlInput && !urlInput.value) urlInput.value = savedUrl;
-                        } catch (e) {}
-                        // Фокус на первом поле ввода
-                        setTimeout(() => {
-                            const firstInput = roomModal.querySelector('input[type="text"]');
-                            if (firstInput) firstInput.focus();
-                        }, 100);
-                    }
-                });
-            }
-        });
     </script>
 </body>
 </html>

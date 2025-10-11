@@ -2,9 +2,12 @@
 // Используем существующие переменные из client.js через window: window.socket, window.roomId
 // Убираем ESM-импорты — скрипт подключается обычным тегом <script>.
 
-// Отладка при загрузке
-console.log('games.js loaded');
-console.log('gameContainer exists:', !!document.getElementById('gameContainer'));
+// Проверяем, есть ли ожидающее приглашение после загрузки games.js
+if (window.pendingInvitation) {
+    console.log('Processing pending invitation:', window.pendingInvitation);
+    showGameInvitation(window.pendingInvitation);
+    window.pendingInvitation = null;
+}
 
 // Инициализация глобального состояния игры
 if (!window.gameState) {
@@ -94,19 +97,32 @@ function updateRoomPlayers() {
     }
 }
 
-// Обработчик получения списка игроков
-if (window.socket) {
+// Функция для инициализации обработчиков приглашений
+function initializeGameInvitations() {
+    if (!window.socket) {
+        console.log('🎮 games.js: Socket not ready, waiting...');
+        // Ждем пока socket инициализируется
+        setTimeout(initializeGameInvitations, 100);
+        return;
+    }
+
+    console.log('🎮 games.js: Socket found, registering event handlers...');
+
     window.socket.on('room-players', (players) => {
+        console.log('👥 games.js: Room players received:', players);
         window.roomPlayers = players || [];
         updateParticipantsList();
         updateOpponentSelector();
     });
-    
+
     window.socket.on('game-invitation', (data) => {
+        console.log('📨 games.js: Game invitation received:', data);
+        console.log('📨 games.js: Calling showGameInvitation...');
         showGameInvitation(data);
     });
-    
+
     window.socket.on('game-invitation-response', (data) => {
+        console.log('📬 games.js: Game invitation response received:', data);
         handleInvitationResponse(data);
     });
 
@@ -169,7 +185,64 @@ if (window.socket) {
             renderPokerGame();
         }
     });
+
+    console.log('✅ games.js: All event handlers registered!');
 }
+
+// Запускаем инициализацию при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🎮 games.js: DOM loaded, initializing...');
+    initializeGameInvitations();
+});
+
+// Также пытаемся инициализировать сразу, на случай если DOM уже загружен
+if (document.readyState === 'loading') {
+    // DOM еще загружается, ждем события
+} else {
+    // DOM уже загружен
+    console.log('🎮 games.js: DOM already loaded, initializing...');
+    initializeGameInvitations();
+}
+
+// Инициализация состояния панелей после загрузки DOM
+document.addEventListener('DOMContentLoaded', () => {
+    // Проверяем, была ли активная игра закрыта пользователем
+    const activeGameClosed = localStorage.getItem('wt_active_game_closed') === 'true';
+    console.log('Active game was closed by user:', activeGameClosed);
+
+    // Скрываем активную игру, если она была закрыта
+    if (activeGameClosed) {
+        const panel = document.getElementById('activeGamePanel');
+        if (panel) {
+            panel.classList.add('hidden');
+            panel.style.display = 'none';
+            console.log('Hiding active game panel on page load');
+        }
+    }
+
+    // Инициализируем состояние панели игр
+    const panel = document.getElementById('gamesPanel');
+    if (panel) {
+        try {
+            const isMobile = window.innerWidth <= 767;
+            const saved = localStorage.getItem('wt_games_collapsed');
+
+            // На мобильных по умолчанию свернуто, на десктопе - развернуто
+            const shouldCollapse = isMobile ? (saved !== 'false') : (saved === 'true');
+
+            if (shouldCollapse) {
+                panel.classList.add('collapsed');
+                const container = document.getElementById('gameContainer');
+                if (container) container.style.display = 'none';
+                const button = panel.querySelector('.toggle-panel');
+                if (button) {
+                    button.textContent = '+';
+                    button.title = 'Развернуть';
+                }
+            }
+        } catch (e) {}
+    }
+});
 
 
 // Показать модальное окно выбора соперника
@@ -383,7 +456,7 @@ function acceptInvitation(gameType, senderId) {
             gameType: gameType
         });
     }
-    
+
     // Найти информацию об отправителе
     const sender = window.roomPlayers.find(p => p.id === senderId);
     window.currentOpponent = {
@@ -392,8 +465,15 @@ function acceptInvitation(gameType, senderId) {
         name: sender?.name || 'Игрок',
         emoji: sender?.emoji || '👤'
     };
-    
+
     closeInvitationModal();
+
+    // Устанавливаем глобальное состояние игры с игроками
+    window.gameState = {
+        players: window.roomPlayers || [],
+        gameType: gameType
+    };
+
     startGameWithOpponent(gameType);
 }
 
@@ -428,6 +508,13 @@ function handleInvitationResponse(data) {
             name: opponent?.name || 'Игрок',
             emoji: opponent?.emoji || '👤'
         };
+
+        // Устанавливаем глобальное состояние игры с игроками
+        window.gameState = {
+            players: window.roomPlayers || [],
+            gameType: data.gameType
+        };
+
         showNotification('Приглашение принято! Начинаем игру.', 'success');
         startGameWithOpponent(data.gameType);
     } else {
@@ -436,12 +523,28 @@ function handleInvitationResponse(data) {
 }
 
 function startGameWithOpponent(gameType) {
+    // Сбрасываем флаг закрытия активной игры, так как пользователь начинает новую
+    try { localStorage.removeItem('wt_active_game_closed'); } catch (e) {}
+
     // Закрываем все модальные окна
     closeOpponentSelector();
     closeInvitationModal();
-    
+
+    // Показываем панель игры
+    const panel = document.getElementById('activeGamePanel');
+    if (!panel) return;
+    const icon = document.getElementById('activeGameIcon');
+    const title = document.getElementById('activeGameTitle');
+    if (icon && title) {
+        if (gameType === 'chess') { icon.textContent = '♟️'; title.textContent = 'Шахматы'; }
+        else if (gameType === 'tictactoe') { icon.textContent = '⭕'; title.textContent = 'Крестики-нолики'; }
+        else if (gameType === 'cards') { icon.textContent = '🃏'; title.textContent = 'Карты'; }
+    }
+    panel.classList.remove('hidden');
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
     // Запускаем игру
-    switch(gameType) {
+    switch (gameType) {
         case 'chess':
             initNetworkChess();
             break;
@@ -533,6 +636,10 @@ function openGame(game) {
 
 function startNetworkGame(game) {
     console.log('Starting network game:', game);
+
+    // Сбрасываем флаг закрытия активной игры, так как пользователь начинает новую
+    try { localStorage.removeItem('wt_active_game_closed'); } catch (e) {}
+
     window.currentGame = game;
 
     // Инициализируем базовое состояние игры
@@ -581,6 +688,9 @@ function startNetworkGame(game) {
 }
 
 function startGameDirectly(game) {
+    // Сбрасываем флаг закрытия активной игры, так как пользователь начинает новую
+    try { localStorage.removeItem('wt_active_game_closed'); } catch (e) {}
+
     window.currentGame = game;
     const panel = document.getElementById('activeGamePanel');
     if (!panel) return;
@@ -621,38 +731,56 @@ function startGameDirectly(game) {
 }
 
 function closeGame() {
+    console.log('closeGame() called - closing active game');
+
+    // Сохраняем факт того, что пользователь закрыл активную игру
+    try { localStorage.setItem('wt_active_game_closed', 'true'); } catch (e) {}
+
+    // Скрываем панель активной игры
     const panel = document.getElementById('activeGamePanel');
-    if (panel) panel.classList.add('hidden');
-    
+    if (panel) {
+        console.log('Hiding active game panel');
+        panel.classList.add('hidden');
+        panel.style.display = 'none'; // Дополнительная гарантия
+    } else {
+        console.log('Active game panel not found');
+    }
+
     // Полностью очищаем состояние игры
     window.gameState = null;
-    
+    window.currentOpponent = null;
+    window.currentGame = null;
+
     // Очищаем содержимое активной игры
     const activeGameContent = document.getElementById('activeGameContent');
     if (activeGameContent) {
+        console.log('Clearing active game content');
         activeGameContent.innerHTML = '';
+        activeGameContent.style.display = 'none'; // Дополнительная гарантия
     }
-    
+
     // Восстанавливаем меню игр в gameContainer
     const container = document.getElementById('gameContainer');
     if (container) {
+        console.log('Restoring game menu');
+        container.style.display = ''; // Показываем контейнер
         container.innerHTML = `
             <h2>🎮 Игры</h2>
             <p>Выберите игру для начала:</p>
-            
+
             <div class="games-grid">
                 <div class="game-card" onclick="openGame('tictactoe')">
                     <div class="game-icon">⭕</div>
                     <div class="game-title">Крестики-нолики</div>
                     <div class="game-description">Классическая игра 3x3</div>
                 </div>
-                
+
                 <div class="game-card" onclick="openGame('chess')">
                     <div class="game-icon">♟️</div>
                     <div class="game-title">Шахматы</div>
                     <div class="game-description">Королевская игра</div>
                 </div>
-                
+
                 <div class="game-card" onclick="openGame('cards')">
                     <div class="game-icon">🃏</div>
                     <div class="game-title">Карточные игры</div>
@@ -661,10 +789,24 @@ function closeGame() {
             </div>
         `;
     }
-    
-    // Сбрасываем выбранного соперника и текущую игру
-    window.currentOpponent = null;
-    window.currentGame = null;
+
+    // Показываем панель игр, если она была скрыта
+    const gamesPanel = document.getElementById('gamesPanel');
+    if (gamesPanel && gamesPanel.classList.contains('collapsed')) {
+        gamesPanel.classList.remove('collapsed');
+        const gameContainer = document.getElementById('gameContainer');
+        if (gameContainer) {
+            gameContainer.style.display = '';
+        }
+    }
+
+    // Если игра была сетевой, уведомляем сервер
+    if (window.socket && window.roomId) {
+        console.log('Notifying server about game end');
+        window.socket.emit('leave-game', { roomId: window.roomId });
+    }
+
+    console.log('Game closed successfully');
 }
 
 // Chess Game
@@ -688,6 +830,10 @@ function initChess() {
         check: false,
         checkmate: false
     };
+
+    // Устанавливаем цвета для локальной игры
+    window.myColor = 'white'; // Игрок всегда играет за белых
+    window.opponentColor = 'black'; // Бот играет за черных
 
     renderChessBoard();
 }
@@ -743,6 +889,14 @@ function renderChessBoard() {
                 let pieceSymbol = '';
                 let pieceClass = color === 'w' ? 'white-piece' : 'black-piece';
                 
+                // Добавляем класс для блокировки фигур противника
+                const isOpponentPiece = (color === 'w' && window.myColor !== 'white') || (color === 'b' && window.myColor !== 'black');
+                const isMyTurn = window.myColor === window.gameState.currentPlayer;
+                
+                if (isOpponentPiece && !isMyTurn) {
+                    pieceClass += ' disabled-piece';
+                }
+                
                 if (color === 'w') {
                     switch (type) {
                         case 'p': pieceSymbol = window.chessPieces.white.pawn; break;
@@ -788,6 +942,14 @@ function handleChessCellClick(e) {
     
     const piece = window.gameState.board[row][col];
 
+    console.log(`Chess: Player ${window.socket?.id} clicked [${row},${col}] piece: ${piece}, currentPlayer: ${window.gameState.currentPlayer}, myColor: ${window.myColor}`);
+
+    // Проверяем, что сейчас ход игрока, который управляет этим клиентом
+    if (window.myColor !== window.gameState.currentPlayer) {
+        console.log(`Chess: Invalid action - it's not your turn. Your color: ${window.myColor}, current player: ${window.gameState.currentPlayer}`);
+        return;
+    }
+
     // Если клетка уже выбрана, отменяем выбор
     if (window.gameState.selectedCell && window.gameState.selectedCell.row === row && window.gameState.selectedCell.col === col) {
         window.gameState.selectedCell = null;
@@ -809,6 +971,7 @@ function handleChessCellClick(e) {
         const fromCol = window.gameState.selectedCell.col;
 
         if (isValidMoveCell(fromRow, fromCol, row, col)) {
+            console.log(`Chess: Valid move from [${fromRow},${fromCol}] to [${row},${col}]`);
             // Отправляем ход на сервер только если играем с игроком
             if (window.socket && window.roomId && window.currentOpponent?.type === 'player') {
                 window.socket.emit('game-move', {
@@ -821,6 +984,7 @@ function handleChessCellClick(e) {
                 });
             } else {
                 // Локальная игра без сервера или с ботом
+                console.log(`Chess: Local move - player: ${window.gameState.currentPlayer}`);
                 const movingPiece = window.gameState.board[fromRow][fromCol];
                 window.gameState.board[fromRow][fromCol] = '';
                 window.gameState.board[row][col] = movingPiece;
@@ -1103,10 +1267,15 @@ function updateChessStatus() {
             const currentName = window.gameState.currentPlayer === 'white' ? 'Белые' : 'Черные';
             statusElement.innerHTML = `<span style="color: #dc3545; font-weight: bold;">Шах!</span> Ход: <span style="color: var(--accent-primary); font-weight: bold;">${currentName} ${currentSymbol}</span>`;
         } else {
+            // Показываем чей ход и указываем, ваш ли это ход
             const currentSymbol = window.gameState.currentPlayer === 'white' ? '♔' : '♚';
             const currentName = window.gameState.currentPlayer === 'white' ? 'Белые' : 'Черные';
+            const isYourTurn = window.myColor === window.gameState.currentPlayer;
+            const turnText = isYourTurn ? 'Ваш ход' : 'Ход противника';
+            const turnIndicator = isYourTurn ? '👉' : '⏳';
             const playerColor = window.gameState.currentPlayer === 'white' ? '#ffffff' : '#1a1a1a';
-            statusElement.innerHTML = `Ход: <span style="color: ${playerColor}; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">${currentName} ${currentSymbol}</span>`;
+            
+            statusElement.innerHTML = `${turnIndicator} <span style="color: ${playerColor}; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">${currentName} ${currentSymbol}</span> (${turnText})`;
         }
     }
 }
@@ -1126,20 +1295,51 @@ function initTicTacToe() {
         winner: null
     };
 
+    // Устанавливаем символы для локальной игры
+    window.mySymbol = 'X'; // Игрок всегда ходит за X
+    window.opponentSymbol = 'O'; // Бот ходит за O
+
     renderTicTacToeBoard();
 }
 
 function initNetworkTicTacToe() {
+    // Определяем mapping игроков
+    const currentPlayerId = window.socket?.id;
+    const opponentId = window.currentOpponent?.id;
+
+    // Первый игрок в массиве ходит за 'X', второй за 'O'
+    const players = window.gameState.players || [];
+    const firstPlayerId = players[0];
+    const secondPlayerId = players[1];
+
+    // Определяем символы для игроков
+    window.gamePlayerMapping = {
+        [firstPlayerId]: 'X',
+        [secondPlayerId]: 'O'
+    };
+
+    // Определяем, за кого играет текущий игрок
+    window.mySymbol = window.gamePlayerMapping[currentPlayerId];
+    window.opponentSymbol = window.gamePlayerMapping[opponentId];
+
+    console.log('Network TicTacToe initialized:', {
+        mySymbol: window.mySymbol,
+        opponentSymbol: window.opponentSymbol,
+        currentPlayerId,
+        opponentId,
+        mapping: window.gamePlayerMapping
+    });
+
     window.gameState = {
+        ...window.gameState, // Сохраняем уже установленные свойства
         board: [
             ['', '', ''],
             ['', '', ''],
             ['', '', '']
         ],
-        currentPlayer: 'X',
+        currentPlayer: 'X', // Всегда начинается с X
         gameOver: false,
         winner: null,
-        players: window.gameState.players || [],
         gameType: 'tictactoe'
     };
 
@@ -1147,7 +1347,35 @@ function initNetworkTicTacToe() {
 }
 
 function initNetworkChess() {
+    // Определяем mapping игроков
+    const currentPlayerId = window.socket?.id;
+    const opponentId = window.currentOpponent?.id;
+
+    // Первый игрок в массиве ходит за белых, второй за черных
+    const players = window.gameState.players || [];
+    const firstPlayerId = players[0];
+    const secondPlayerId = players[1];
+
+    // Определяем цвета для игроков
+    window.gamePlayerMapping = {
+        [firstPlayerId]: 'white',
+        [secondPlayerId]: 'black'
+    };
+
+    // Определяем, за кого играет текущий игрок
+    window.myColor = window.gamePlayerMapping[currentPlayerId];
+    window.opponentColor = window.gamePlayerMapping[opponentId];
+
+    console.log('Network Chess initialized:', {
+        myColor: window.myColor,
+        opponentColor: window.opponentColor,
+        currentPlayerId,
+        opponentId,
+        mapping: window.gamePlayerMapping
+    });
+
     window.gameState = {
+        ...window.gameState, // Сохраняем уже установленные свойства
         board: [
             ['br', 'bn', 'bb', 'bq', 'bk', 'bb', 'bn', 'br'],
             ['bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp'],
@@ -1158,11 +1386,10 @@ function initNetworkChess() {
             ['wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp'],
             ['wr', 'wn', 'wb', 'wq', 'wk', 'wb', 'wn', 'wr']
         ],
-        currentPlayer: 'white',
+        currentPlayer: 'white', // Белые ходят первыми
         selectedCell: null,
         check: false,
         checkmate: false,
-        players: window.gameState.players || [],
         gameType: 'chess'
     };
 
@@ -1308,7 +1535,12 @@ function renderTicTacToeBoard() {
         for (let col = 0; col < 3; col++) {
             const cellValue = window.gameState.board[row][col];
             const dataSymbol = cellValue ? `data-symbol="${cellValue}"` : '';
-            html += `<div class="ttt-cell" data-row="${row}" data-col="${col}" ${dataSymbol}>${cellValue}</div>`;
+            
+            // Блокируем клетку, если не ход текущего игрока или клетка занята
+            const isDisabled = cellValue !== '' || window.mySymbol !== window.gameState.currentPlayer;
+            const disabledClass = isDisabled ? 'disabled' : '';
+            
+            html += `<div class="ttt-cell ${disabledClass}" data-row="${row}" data-col="${col}" ${dataSymbol}>${cellValue}</div>`;
         }
     }
     html += '</div>';
@@ -1336,9 +1568,18 @@ function handleTicTacToeCellClick(e) {
     const row = parseInt(cell.dataset.row);
     const col = parseInt(cell.dataset.col);
 
+    console.log(`TicTacToe: Player ${window.socket?.id} attempting move at [${row},${col}], currentPlayer: ${window.gameState.currentPlayer}, mySymbol: ${window.mySymbol}`);
+
+    // Проверяем, что сейчас ход игрока, который управляет этим клиентом
+    if (window.mySymbol !== window.gameState.currentPlayer) {
+        console.log(`TicTacToe: Invalid move - it's not your turn. Your symbol: ${window.mySymbol}, current player: ${window.gameState.currentPlayer}`);
+        return;
+    }
+
     if (window.gameState.board[row][col] === '') {
         // Отправляем ход на сервер только если играем с игроком
         if (window.socket && window.roomId && window.currentOpponent?.type === 'player') {
+            console.log(`TicTacToe: Sending move to server - player: ${window.gameState.currentPlayer}`);
             window.socket.emit('game-move', {
                 roomId: window.roomId,
                 gameType: 'tictactoe',
@@ -1350,6 +1591,7 @@ function handleTicTacToeCellClick(e) {
             });
         } else {
             // Локальная игра без сервера или с ботом
+            console.log(`TicTacToe: Local move - player: ${window.gameState.currentPlayer}`);
             window.gameState.board[row][col] = window.gameState.currentPlayer;
             window.gameState.currentPlayer = window.gameState.currentPlayer === 'X' ? 'O' : 'X';
             checkTicTacToeWinner();
@@ -1554,8 +1796,13 @@ function updateTicTacToeStatus() {
                 }, 100);
             }
         } else {
+            // Показываем чей ход и указываем, ваш ли это ход
             const playerColor = window.gameState.currentPlayer === 'X' ? 'var(--accent-primary)' : '#dc3545';
-            statusElement.innerHTML = `Ход: <span style="color: ${playerColor}; font-weight: bold;">${window.gameState.currentPlayer}</span>`;
+            const isYourTurn = window.mySymbol === window.gameState.currentPlayer;
+            const turnText = isYourTurn ? 'Ваш ход' : 'Ход противника';
+            const turnIndicator = isYourTurn ? '👉' : '⏳';
+            
+            statusElement.innerHTML = `${turnIndicator} <span style="color: ${playerColor}; font-weight: bold;">${window.gameState.currentPlayer}</span> (${turnText})`;
         }
     }
 }
@@ -3472,6 +3719,13 @@ if (window.socket) {
     window.socket.on('game-state', (gameState) => {
         console.log('Received game-state:', gameState);
         if (!gameState) return;
+
+        // Проверяем, была ли активная игра закрыта пользователем
+        const activeGameClosed = localStorage.getItem('wt_active_game_closed') === 'true';
+        if (activeGameClosed) {
+            console.log('Active game was closed by user, ignoring game-state');
+            return;
+        }
 
         // Сохраняем состояние глобально
         window.gameState = gameState;

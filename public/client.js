@@ -4,6 +4,22 @@
 	requires подключение YouTube IFrame API (YT.Player).
 */
 
+// Helper function for getting elements by ID
+function $(id) { return document.getElementById(id); }
+
+// Generate random emoji for user identification
+const userEmojis = ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗', '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐', '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈', '👿', '👹', '👺', '🤡', '💩', '👻', '💀', '☠️', '👽', '👾', '🤖', '🎃', '😺', '😸', '😹', '😻', '😼', '😽', '🙀', '😿', '😾'];
+const userEmoji = userEmojis[Math.floor(Math.random() * userEmojis.length)];
+
+// Global variables
+let timeUpdater = null;
+let player = null;
+let hlsInstance = null;
+let ytPolling = null;
+let youtubePlayer = null;
+let localStream = null;
+let pcs = {};
+
 function initializeSocket() {
     // Определяем базовый URL для сокета
     let socketUrl;
@@ -166,6 +182,13 @@ function initializeSocket() {
         }
     });
 
+    // Обработчик списка участников комнаты
+    window.socket.on('room-players', (players) => {
+        console.log('Room players updated:', players);
+        window.roomPlayers = players || [];
+        updateParticipantsList();
+    });
+
     // Уведомление о начале новой игры
     window.socket.on('game-started', ({ gameType, players, starter }) => {
         console.log('Game started:', gameType, 'by', starter);
@@ -173,7 +196,7 @@ function initializeSocket() {
         // Показываем уведомление
         showNotification(`${starter} начал игру: ${gameType === 'tictactoe' ? 'Крестики-нолики' : gameType === 'chess' ? 'Шахматы' : 'Карты'}`, 'info');
 
-        // Если мы не инициатор, ожидаем состояние игры
+        // Если мы не инициатор, ожидаем состояния игры
         if (starter !== userEmoji) {
             // Ожидаем синхронизации состояния
         }
@@ -188,6 +211,8 @@ function initializeSocket() {
             showNotification(`Игра "${gameName}" завершена! Победитель: ${winner}`, 'success');
         }
     });
+
+    // Обработчик приглашений в игры - удален, оставлен только в games.js
 
 }
 function showError(message) {
@@ -279,18 +304,6 @@ function renderCardsGame() {
     container.innerHTML = html;
 }
 
-function getCardSymbol(card) {
-    const suits = { 'hearts': '♥', 'diamonds': '♦', 'clubs': '♣', 'spades': '♠' };
-    const values = { '6': '6', '7': '7', '8': '8', '9': '9', '10': '10', 'J': 'J', 'Q': 'Q', 'K': 'K', 'A': 'A' };
-
-    return `${values[card.value]}${suits[card.suit]}`;
-}
-
-function getSuitSymbol(suit) {
-    const suits = { 'hearts': '♥', 'diamonds': '♦', 'clubs': '♣', 'spades': '♠' };
-    return suits[suit] || suit;
-}
-
 function playCard(suit, value, index) {
     if (!window.socket || !window.roomId) return;
 
@@ -319,6 +332,7 @@ function drawCards() {
 
 // Функция для обновления статуса подключения
 function updateConnectionStatus(connected) {
+    // Для обратной совместимости оставляем старый код, но он не будет работать если элемент удален
     const statusEl = document.getElementById('connectionStatus');
     if (!statusEl) return;
 
@@ -330,28 +344,6 @@ function updateConnectionStatus(connected) {
         statusEl.classList.add('disconnected');
         statusEl.querySelector('.connection-text').textContent = 'Нет соединения';
     }
-}
-window.roomId = null;
-window.player = null; // { type: 'video'|'youtube', el: DOMElement }
-window.isSeekingProgrammatically = false;
-window.timeUpdater = null;
-window.hlsInstance = null; // hls.js instance when playing .m3u8
-window.youtubePlayer = null; // YT.Player instance
-window.ytPolling = null; // interval for polling currentTime from YT player
-// WebRTC state
-window.localStream = null;
-window.pcs = {}; // peerId -> RTCPeerConnection
-
-// Helper function for getting elements by ID
-function $(id) { return document.getElementById(id); }
-
-// Generate random emoji for user identification
-const userEmojis = ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗', '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐', '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈', '👿', '👹', '👺', '🤡', '💩', '👻', '💀', '☠️', '👽', '👾', '🤖', '🎃', '😺', '😸', '😹', '😻', '😼', '😽', '🙀', '😿', '😾'];
-const userEmoji = userEmojis[Math.floor(Math.random() * userEmojis.length)];
-
-// Update global room ID
-function updateGlobalRoomId(roomId) {
-    window.roomId = roomId;
 }
 
 // Initialize socket immediately when script loads
@@ -365,9 +357,6 @@ if (document.readyState === 'loading') {
     initializeSocket();
 }
 
-function detectYouTube(url) {
-	return /youtube.com|youtu.be/.test(url);
-}
 
 function createVideoElement(url) {
 	const vid = document.createElement('video');
@@ -381,6 +370,10 @@ function createVideoElement(url) {
 function extractYouTubeId(url) {
 	const m = url.match(/(?:v=|youtu.be\/)([A-Za-z0-9_-]{6,})/);
 	return m ? m[1] : null;
+}
+
+function detectYouTube(url) {
+	return url.includes('youtube.com') || url.includes('youtu.be');
 }
 
 function clearTimeUpdater() {
@@ -584,6 +577,11 @@ function loadPlayer(url) {
 	}
 }
 
+// Update global room ID
+function updateGlobalRoomId(roomId) {
+    window.roomId = roomId;
+}
+
 // UI handlers
 document.addEventListener('DOMContentLoaded', () => {
 	const createBtn = $('createBtn');
@@ -651,8 +649,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			e.preventDefault(); container.style.outline = '';
 			const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
 			if (!f) return;
-			const url = URL.createObjectURL(f);
-			loadPlayer(url);
+			loadPlayer(URL.createObjectURL(f));
 		});
 	}
 
@@ -706,17 +703,6 @@ document.addEventListener('DOMContentLoaded', () => {
 			}
 		});
 	}
-
-	const backBtn = $('seekBack'); if (backBtn) backBtn.addEventListener('click', () => {
-		if (!player) return;
-		if (player.type === 'video') { player.el.currentTime = Math.max(0, player.el.currentTime - 10); if (roomId) socket.emit('player-event', { roomId, type: 'seek', data: { time: player.el.currentTime } }); }
-		else if (player.type === 'youtube' && youtubePlayer) { const t = Math.max(0, youtubePlayer.getCurrentTime() - 10); youtubePlayer.seekTo(t, true); if (roomId) socket.emit('player-event', { roomId, type: 'seek', data: { time: t } }); }
-	});
-	const fwdBtn = $('seekFwd'); if (fwdBtn) fwdBtn.addEventListener('click', () => {
-		if (!player) return;
-		if (player.type === 'video') { player.el.currentTime = player.el.currentTime + 10; if (roomId) socket.emit('player-event', { roomId, type: 'seek', data: { time: player.el.currentTime } }); }
-		else if (player.type === 'youtube' && youtubePlayer) { const t = youtubePlayer.getCurrentTime() + 10; youtubePlayer.seekTo(t, true); if (roomId) socket.emit('player-event', { roomId, type: 'seek', data: { time: t } }); }
-	});
 
 	// Chat send
 	const sendBtn = $('sendMsg');
@@ -787,16 +773,16 @@ document.addEventListener('DOMContentLoaded', () => {
 	if (closeRoom) closeRoom.addEventListener('click', hideModal);
 	if (roomModal) {
 		roomModal.addEventListener('click', (e) => { if (e.target === roomModal) hideModal(); });
-	// Закрытие модального окна по Escape (глобальный обработчик)
-	document.addEventListener('keydown', (e) => {
-		if (e.key === 'Escape') {
-			const roomModal = $('roomModal');
-			if (roomModal && roomModal.getAttribute('aria-hidden') === 'false') {
-				roomModal.setAttribute('aria-hidden', 'true');
-				roomModal.style.display = 'none';
+		// Закрытие модального окна по Escape (глобальный обработчик)
+		document.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape') {
+				const roomModal = $('roomModal');
+				if (roomModal && roomModal.getAttribute('aria-hidden') === 'false') {
+					roomModal.setAttribute('aria-hidden', 'true');
+					roomModal.style.display = 'none';
+				}
 			}
-		}
-	});
+		});
 	}
 
 	// Reset saved room/url button
@@ -896,13 +882,25 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	}
 
+	// Seek back and forward buttons
+	const backBtn = $('seekBack'); if (backBtn) backBtn.addEventListener('click', () => {
+		if (!player) return;
+		if (player.type === 'video') { player.el.currentTime = Math.max(0, player.el.currentTime - 10); if (roomId) socket.emit('player-event', { roomId, type: 'seek', data: { time: player.el.currentTime } }); }
+		else if (player.type === 'youtube' && youtubePlayer) { const t = Math.max(0, youtubePlayer.getCurrentTime() - 10); youtubePlayer.seekTo(t, true); if (roomId) socket.emit('player-event', { roomId, type: 'seek', data: { time: t } }); }
+	});
+	const fwdBtn = $('seekFwd'); if (fwdBtn) fwdBtn.addEventListener('click', () => {
+		if (!player) return;
+		if (player.type === 'video') { player.el.currentTime = player.el.currentTime + 10; if (roomId) socket.emit('player-event', { roomId, type: 'seek', data: { time: player.el.currentTime } }); }
+		else if (player.type === 'youtube' && youtubePlayer) { const t = youtubePlayer.getCurrentTime() + 10; youtubePlayer.seekTo(t, true); if (roomId) socket.emit('player-event', { roomId, type: 'seek', data: { time: t } }); }
+	});
+
 	// Progress bar and handle
 	const progressBar = $('progressBar');
 	const progressHandle = $('progressHandle');
 	let isDraggingProgress = false;
 
 	function updateProgressBar() {
-		if (!player || !progressBar) return;
+    if (!player || !progressBar) return;
 
 		let duration = 0;
 		let currentTime = 0;
@@ -1625,105 +1623,6 @@ function initFloatingCam() {
 		ro.observe(widget);
 	} catch (e) { }
 
-	// hide/show self-preview
-	const toggleSelfBtn = $('toggleSelf');
-	if (toggleSelfBtn) {
-		console.log('Found toggleSelf button, adding click handler');
-		toggleSelfBtn.addEventListener('click', (e) => {
-			console.log('=== TOGGLE SELF CLICKED ===');
-			e.stopPropagation(); // Prevent event bubbling to header
-
-			// Hide/show the video elements directly
-			const localVideo = $('localVideo');
-			const remoteVideo = $('remoteVideo');
-
-			console.log('Video elements:');
-			console.log('- localVideo:', localVideo);
-			console.log('- remoteVideo:', remoteVideo);
-
-			if (!localVideo && !remoteVideo) {
-				console.log('ERROR: No video elements found');
-				return;
-			}
-
-			// Check if videos are currently hidden
-			const isLocalHidden = localVideo && localVideo.classList.contains('video-hidden');
-			const isRemoteHidden = remoteVideo && remoteVideo.classList.contains('video-hidden');
-			const anyHidden = isLocalHidden || isRemoteHidden;
-
-			console.log('Current hidden state:', { isLocalHidden, isRemoteHidden, anyHidden });
-
-			if (!anyHidden) {
-				// Hide videos
-				if (localVideo) {
-					localVideo.classList.add('video-hidden');
-					localVideo.style.display = 'none';
-					localVideo.style.visibility = 'hidden';
-					console.log('Hidden localVideo');
-				}
-				if (remoteVideo) {
-					remoteVideo.classList.add('video-hidden');
-					remoteVideo.style.display = 'none';
-					remoteVideo.style.visibility = 'hidden';
-					console.log('Hidden remoteVideo');
-				}
-				toggleSelfBtn.textContent = '👁️';
-				toggleSelfBtn.title = 'Показать видео';
-				console.log('Videos hidden');
-			} else {
-				// Show videos
-				if (localVideo) {
-					localVideo.classList.remove('video-hidden');
-					localVideo.style.display = '';
-					localVideo.style.visibility = '';
-					console.log('Shown localVideo');
-				}
-				if (remoteVideo) {
-					remoteVideo.classList.remove('video-hidden');
-					remoteVideo.style.display = '';
-					remoteVideo.style.visibility = '';
-					console.log('Shown remoteVideo');
-				}
-				toggleSelfBtn.textContent = '👤';
-				toggleSelfBtn.title = 'Скрыть видео';
-				console.log('Videos shown');
-			}
-
-			const hidden = !anyHidden;
-			try {
-				localStorage.setItem('wt_cam_self_hidden', hidden ? '1' : '0');
-				console.log('Saved to localStorage:', hidden ? '1' : '0');
-			} catch (e) { console.log('Failed to save to localStorage'); }
-		});
-		// restore and set initial button state
-		try {
-			const saved = localStorage.getItem('wt_cam_self_hidden');
-			console.log('Restoring self-preview state from localStorage:', saved);
-			if (saved === '1') {
-				const localVideo = $('localVideo');
-				const remoteVideo = $('remoteVideo');
-				if (localVideo) {
-					localVideo.classList.add('video-hidden');
-					localVideo.style.display = 'none';
-					localVideo.style.visibility = 'hidden';
-				}
-				if (remoteVideo) {
-					remoteVideo.classList.add('video-hidden');
-					remoteVideo.style.display = 'none';
-					remoteVideo.style.visibility = 'hidden';
-				}
-				toggleSelfBtn.textContent = '👁️';
-				toggleSelfBtn.title = 'Показать видео';
-				console.log('Restored: videos hidden');
-			} else {
-				toggleSelfBtn.textContent = '👤';
-				toggleSelfBtn.title = 'Скрыть видео';
-			}
-		} catch (e) { console.log('Failed to restore from localStorage'); }
-	} else {
-		console.log('ERROR: toggleSelf button not found');
-	}
-
 	// ensure widget stays visible during fullscreen: when document enters fullscreen, append widget to fullscreenElement
 	document.addEventListener('fullscreenchange', () => {
 		const fs = document.fullscreenElement;
@@ -1861,38 +1760,50 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Picture-in-Picture button handling
+// Toggle games panel
+function toggleGamesPanel() {
+    const panel = document.getElementById('gamesPanel');
+    const container = document.getElementById('gameContainer');
+    const button = panel.querySelector('.toggle-panel');
+
+    if (panel.classList.contains('collapsed')) {
+        // Expand panel
+        panel.classList.remove('collapsed');
+        container.style.display = '';
+        button.textContent = '−';
+        button.title = 'Свернуть';
+        try { localStorage.setItem('wt_games_collapsed', 'false'); } catch (e) {}
+    } else {
+        // Collapse panel
+        panel.classList.add('collapsed');
+        container.style.display = 'none';
+        button.textContent = '+';
+        button.title = 'Развернуть';
+        try { localStorage.setItem('wt_games_collapsed', 'true'); } catch (e) {}
+    }
+}
+
+// Initialize games panel state
 document.addEventListener('DOMContentLoaded', () => {
-	const pipBtn = $('pipBtn');
-	const local = $('localVideo');
-	function updatePipBtn(on) {
-		if (!pipBtn) return;
-		pipBtn.textContent = on ? '🗖' : '🗔';
-		pipBtn.title = on ? 'Выйти из PiP' : 'Вывести в PiP';
-	}
+    const panel = document.getElementById('gamesPanel');
+    if (panel) {
+        try {
+            const isMobile = window.innerWidth <= 767;
+            const saved = localStorage.getItem('wt_games_collapsed');
 
-	if (pipBtn) {
-		pipBtn.addEventListener('click', async () => {
-			try {
-				// ensure local video exists
-				const video = $('localVideo');
-				if (!video) return alert('Локальное видео недоступно');
-				if (document.pictureInPictureElement) {
-					await document.exitPictureInPicture();
-				} else {
-					if (video.readyState === 0) { await video.play().catch(() => { }); }
-					if (video !== document.pictureInPictureElement) { await video.requestPictureInPicture(); }
-				}
-			} catch (e) { console.warn('PiP failed', e); alert('Picture-in-Picture недоступен в этом браузере'); }
-		});
-	}
+            // На мобильных по умолчанию свернуто, на десктопе - развернуто
+            const shouldCollapse = isMobile ? (saved !== 'false') : (saved === 'true');
 
-	// update button based on PiP events
-	if (local) {
-		local.addEventListener('enterpictureinpicture', () => updatePipBtn(true));
-		local.addEventListener('leavepictureinpicture', () => updatePipBtn(false));
-	}
-
-	// initialize state
-	setTimeout(() => updatePipBtn(!!document.pictureInPictureElement), 200);
+            if (shouldCollapse) {
+                panel.classList.add('collapsed');
+                const container = document.getElementById('gameContainer');
+                if (container) container.style.display = 'none';
+                const button = panel.querySelector('.toggle-panel');
+                if (button) {
+                    button.textContent = '+';
+                    button.title = 'Развернуть';
+                }
+            }
+        } catch (e) {}
+    }
 });

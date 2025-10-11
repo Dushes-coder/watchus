@@ -141,27 +141,41 @@ io.on('connection', (socket) => {
 	// Отправка приглашения в игру
 	socket.on('send-game-invitation', ({ roomId, targetPlayerId, gameType, senderName }) => {
 		console.log(`Game invitation sent: ${gameType} from ${socket.id} to ${targetPlayerId} in room ${roomId}`);
-		
-		// Отправляем приглашение целевому игроку
-		socket.to(targetPlayerId).emit('game-invitation', {
-			gameType: gameType,
-			senderId: socket.id,
-			senderName: senderName || 'Игрок',
-			senderEmoji: socket.userEmoji || '👤'
-		});
+
+		// Проверяем, что targetPlayerId является валидным socket.id
+		const targetSocket = io.sockets.sockets.get(targetPlayerId);
+		if (targetSocket) {
+			// Отправляем приглашение целевому игроку
+			socket.to(targetPlayerId).emit('game-invitation', {
+				gameType: gameType,
+				senderId: socket.id,
+				senderName: senderName || 'Игрок',
+				senderEmoji: socket.userEmoji || '👤'
+			});
+			console.log(`Invitation sent to ${targetPlayerId}`);
+		} else {
+			console.log(`Target player ${targetPlayerId} not found or not connected`);
+		}
 	});
 	
 	// Ответ на приглашение в игру
 	socket.on('game-invitation-response', ({ roomId, senderId, accepted, gameType }) => {
-		console.log(`Game invitation response: ${accepted ? 'accepted' : 'declined'} from ${socket.id} for ${gameType}`);
-		
-		// Отправляем ответ отправителю приглашения
-		socket.to(senderId).emit('game-invitation-response', {
-			accepted: accepted,
-			responderId: socket.id,
-			gameType: gameType
-		});
-		
+		console.log(`Game invitation response: ${accepted ? 'accepted' : 'declined'} from ${socket.id} to ${senderId} for ${gameType}`);
+
+		// Проверяем, что senderId является валидным socket.id
+		const senderSocket = io.sockets.sockets.get(senderId);
+		if (senderSocket) {
+			// Отправляем ответ отправителю приглашения
+			socket.to(senderId).emit('game-invitation-response', {
+				accepted: accepted,
+				responderId: socket.id,
+				gameType: gameType
+			});
+			console.log(`Response sent to ${senderId}`);
+		} else {
+			console.log(`Sender ${senderId} not found or not connected`);
+		}
+
 		// Если приглашение принято, начинаем игру
 		if (accepted) {
 			startNetworkGame(roomId, gameType, [senderId, socket.id]);
@@ -244,14 +258,49 @@ io.on('connection', (socket) => {
 		if (gameType === 'chess') {
 			// Применяем ход
 			const { from, to } = move;
-			const piece = gameState.board[from.row][from.col];
-			gameState.board[from.row][from.col] = '';
-			gameState.board[to.row][to.col] = piece;
-			gameState.currentPlayer = gameState.currentPlayer === 'white' ? 'black' : 'white';
-			gameState.selectedCell = null;
+			
+			// Определяем цвет игрока, делающего ход
+			const currentPlayerColor = gameState.currentPlayer; // 'white' или 'black'
+			const movingPiece = gameState.board[from.row][from.col];
+			
+			// Проверяем, что фигура принадлежит текущему игроку
+			const expectedPieceColor = currentPlayerColor === 'white' ? 'w' : 'b';
+			if (!movingPiece || movingPiece[0] !== expectedPieceColor) {
+				console.log(`Chess: Invalid move - player ${socket.id} tried to move ${movingPiece} but it's ${currentPlayerColor}'s turn`);
+				return;
+			}
+			
+			console.log(`Chess: Valid move - ${currentPlayerColor} moves ${movingPiece} from [${from.row},${from.col}] to [${to.row},${to.col}]`);
+			
+			if (isValidMoveCell(from.row, from.col, to.row, to.col)) {
+				const movingPiece = gameState.board[from.row][from.col];
+				gameState.board[from.row][from.col] = '';
+				gameState.board[to.row][to.col] = movingPiece;
+				gameState.selectedCell = null;
+				gameState.currentPlayer = gameState.currentPlayer === 'white' ? 'black' : 'white';
+
+				// Проверяем мат
+				// (упрощенная проверка - в реальности нужна более сложная логика)
+				if (gameState.checkmate) {
+					const winner = gameState.currentPlayer === 'white' ? 'black' : 'white';
+					socket.to(roomId).emit('game-ended', {
+						winner: winner,
+						gameType: 'chess'
+					});
+				}
+			}
 		} else if (gameType === 'tictactoe') {
 			// Применяем ход
 			const { row, col, player } = move;
+			
+			// Проверяем право на ход
+			if (player !== gameState.currentPlayer) {
+				console.log(`TicTacToe: Invalid move - player ${player} tried to move but it's ${gameState.currentPlayer}'s turn`);
+				return;
+			}
+			
+			console.log(`TicTacToe: Valid move - player ${player} moves at [${row},${col}]`);
+			
 			if (gameState.board[row][col] === '' && !gameState.gameOver) {
 				gameState.board[row][col] = player;
 				gameState.currentPlayer = player === 'X' ? 'O' : 'X';
@@ -260,6 +309,7 @@ io.on('connection', (socket) => {
 				if (winner) {
 					gameState.gameOver = true;
 					gameState.winner = winner;
+					console.log(`TicTacToe: Game over - winner: ${winner}`);
 				}
 			}
 		} else if (gameType === 'cards') {
