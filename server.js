@@ -272,22 +272,20 @@ io.on('connection', (socket) => {
 			
 			console.log(`Chess: Valid move - ${currentPlayerColor} moves ${movingPiece} from [${from.row},${from.col}] to [${to.row},${to.col}]`);
 			
-			if (isValidMoveCell(from.row, from.col, to.row, to.col)) {
-				const movingPiece = gameState.board[from.row][from.col];
-				gameState.board[from.row][from.col] = '';
-				gameState.board[to.row][to.col] = movingPiece;
-				gameState.selectedCell = null;
-				gameState.currentPlayer = gameState.currentPlayer === 'white' ? 'black' : 'white';
+			// Применяем ход (валидация происходит на клиенте)
+			gameState.board[from.row][from.col] = '';
+			gameState.board[to.row][to.col] = movingPiece;
+			gameState.selectedCell = null;
+			gameState.currentPlayer = gameState.currentPlayer === 'white' ? 'black' : 'white';
 
-				// Проверяем мат
-				// (упрощенная проверка - в реальности нужна более сложная логика)
-				if (gameState.checkmate) {
-					const winner = gameState.currentPlayer === 'white' ? 'black' : 'white';
-					socket.to(roomId).emit('game-ended', {
-						winner: winner,
-						gameType: 'chess'
-					});
-				}
+			// Проверяем мат
+			// (упрощенная проверка - в реальности нужна более сложная логика)
+			if (gameState.checkmate) {
+				const winner = gameState.currentPlayer === 'white' ? 'black' : 'white';
+				socket.to(roomId).emit('game-ended', {
+					winner: winner,
+					gameType: 'chess'
+				});
 			}
 		} else if (gameType === 'tictactoe') {
 			// Применяем ход

@@ -166,21 +166,7 @@ function initializeSocket() {
     });
 
     // Синхронизация состояния игры для всех участников комнаты
-    window.socket.on('game-state', (gameState) => {
-        console.log('Received game state:', gameState);
-
-        // Обновляем локальное состояние игры
-        window.gameState = gameState;
-
-        // Определяем тип игры и перерисовываем интерфейс
-        if (gameState.gameType === 'tictactoe') {
-            renderTicTacToeBoard();
-        } else if (gameState.gameType === 'chess') {
-            renderChessBoard();
-        } else if (gameState.gameType === 'cards') {
-            renderCardsGame();
-        }
-    });
+    // Обработчик game-state перенесен в games.js
 
     // Обработчик списка участников комнаты
     window.socket.on('room-players', (players) => {
