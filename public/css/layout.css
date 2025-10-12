@@ -1,0 +1,167 @@
+/* Layout Styles */
+
+/* Adjust main layout to account for fixed header */
+.main-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+    gap: clamp(24px, 4vw, 36px);
+    padding: calc(80px + clamp(24px, 5vw, 48px)) clamp(24px, 5vw, 48px) clamp(24px, 5vw, 48px);
+    min-height: 100vh;
+    max-width: 1900px;
+    margin: 0 auto;
+    position: relative;
+    animation: fadeInViewport 0.6s ease-out;
+}
+
+.left-panel {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(20px, 2.5vw, 28px);
+    min-width: 0;
+    flex: 1;
+}
+
+.right-panel {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(18px, 2vw, 26px);
+    position: sticky;
+    top: 16px;
+    align-self: start;
+    max-height: calc(100vh - 16px); /* Увеличиваем доступное пространство */
+    overflow-y: auto;
+    overflow-x: visible; /* Позволяет содержимому выходить за пределы по горизонтали */
+    padding-bottom: clamp(24px, 6vh, 48px);
+    /* Добавляем дополнительное пространство для hover эффектов */
+    margin-bottom: 20px;
+}
+
+.right-panel::-webkit-scrollbar {
+    width: 6px;
+}
+
+.right-panel::-webkit-scrollbar-thumb {
+    background: var(--glass-hover);
+    border-radius: 3px;
+}
+
+/* Panel/Card */
+.panel {
+    background: var(--surface-glass);
+    backdrop-filter: var(--backdrop-blur) saturate(160%);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--panel-radius);
+    box-shadow: var(--shadow-soft);
+    padding: clamp(20px, 2.8vw, 26px);
+    transition: var(--transition-glow);
+    position: relative;
+    overflow: visible;
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* Allow flex items to shrink */
+    /* Убираем фиксированную высоту для адаптивности */
+}
+
+.panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at top left, rgba(0, 224, 255, 0.12), transparent 55%),
+                radial-gradient(circle at bottom right, rgba(255, 64, 129, 0.12), transparent 60%);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    pointer-events: none;
+}
+
+.panel:hover::before {
+    opacity: 1;
+}
+
+.panel:hover {
+    border-color: rgba(0, 224, 255, 0.25);
+    box-shadow: 0 24px 48px rgba(0, 224, 255, 0.12);
+    transform: translateY(-2px); /* Уменьшаем подъем для предотвращения обрезания */
+    z-index: 10; /* Панель поверх других элементов */
+}
+
+.panel.compact {
+    padding: clamp(18px, 2vw, 22px);
+}
+
+.panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.panel-title {
+    font-size: 20px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    letter-spacing: 0.01em;
+}
+
+.panel-title .icon {
+    font-size: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Collapsible Games Panel */
+.panel.collapsible .toggle-panel {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    font-size: 16px;
+    font-weight: bold;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.panel.collapsible .toggle-panel:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(0, 224, 255, 0.3);
+    color: var(--accent-primary);
+}
+
+.panel.collapsed .panel-header {
+    border-bottom: none;
+}
+
+.panel.collapsed #gameContainer {
+    display: none;
+}
+
+/* Game container styling - адаптивный контейнер */
+#gameContainer {
+    /* Убираем фиксированную высоту для автоматического растягивания */
+    min-height: 200px;  /* Минимальная высота для случаев когда игр мало */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 16px;
+    padding: 20px 10px;
+    /* Контейнер будет автоматически расти с количеством игр */
+}
+
+/* На мобильных панель игр свернута по умолчанию */
+@media (max-width: 767px) {
+    .panel.collapsible.collapsed {
+        margin-bottom: 8px;
+    }
+}

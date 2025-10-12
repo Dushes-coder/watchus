@@ -1,0 +1,4121 @@
+// ===== MODULAR GAME SYSTEM =====
+// Основной файл games.js теперь использует модульную структуру
+
+// ===== LEGACY FUNCTIONS =====
+// Следующие функции оставлены для обратной совместимости
+
+// Загрузка модулей динамически
+function loadGameModules() {
+    return new Promise((resolve, reject) => {
+        // Загружаем модули в правильном порядке
+        const modules = [
+            './js/modules/legacy/legacy-functions.js', // Загружаем legacy функции отдельно
+            './js/modules/index.js' // Загружаем index.js для инициализации
+        ];
+
+        let loadedCount = 0;
+        const totalModules = modules.length;
+
+        function loadModule(src) {
+            const script = document.createElement('script');
+            script.src = src;
+            
+            // Legacy functions загружаем как обычный скрипт, остальные как модули
+            if (src.includes('legacy-functions.js')) {
+                // Обычный скрипт для legacy функций
+            } else {
+                script.type = 'module';
+            }
+            
+            script.onload = () => {
+                loadedCount++;
+                console.log(`Loaded module ${loadedCount}/${totalModules}: ${src}`);
+                if (loadedCount === totalModules) {
+                    console.log('All game modules loaded successfully!');
+                    resolve();
+                }
+            };
+            script.onerror = (e) => {
+                console.error('Failed to load module:', src, e);
+                reject(new Error(`Failed to load ${src}`));
+            };
+            document.head.appendChild(script);
+        }
+
+        // Загружаем модули последовательно
+        modules.forEach(loadModule);
+    });
+}
+
+// Инициализация после загрузки модулей
+loadGameModules().then(() => {
+    console.log('🎮 Game system initialized successfully');
+
+    // Инициализируем игровую систему
+    if (window.initializeGameSystem) {
+        window.initializeGameSystem();
+    }
+}).catch((error) => {
+    console.error('Failed to load game modules:', error);
+});
+
+// Функции-заглушки для синхронного доступа
+// Они будут заменены после загрузки модулей
+
+// Функция инициализации приглашений в игры
+function initializeGameInvitations() {
+    if (!window.socket) return;
+
+    console.log('🎮 Initializing game invitations...');
+
+    // Обработчик входящих приглашений
+    window.socket.on('game-invitation', (data) => {
+        console.log('📨 Received game invitation:', data);
+        showGameInvitation(data);
+    });
+
+    // Обработчик отклонения приглашения
+    window.socket.on('invitation-declined', (data) => {
+        console.log('❌ Invitation declined by:', data.playerId);
+        showNotification('Приглашение отклонено', 'warning');
+    });
+
+    // Обработчик ответа на приглашение
+    window.socket.on('game-invitation-response', (data) => {
+        console.log('📬 Game invitation response:', data);
+        handleInvitationResponse(data);
+    });
+
+    console.log('✅ Game invitations initialized');
+}
+
+// Обработчик полного обновления состояния игры от сервера
+function handleGameStateUpdate(data) {
+        console.log('🎯 FULL GAME STATE UPDATE:', data);
+
+        if (data.gameType === 'poker' || data.gameType === 'durak') {
+            // Обновляем полное состояние игры
+            if (data.state) {
+                window.gameState = { ...window.gameState, ...data.state };
+                console.log('Updated game state:', window.gameState);
+
+                // Перерисовываем игру
+                if (data.gameType === 'poker') {
+                    renderPokerGame();
+                } else if (data.gameType === 'durak') {
+                    renderDurakGame();
+                }
+
+                showNotification('Игра синхронизирована', 'info');
+            }
+        }
+    }
+
+    // Инициализация обработчиков событий для карточных игр
+    if (window.socket) {
+        window.socket.on('game-closed', () => {
+            console.log('Received game-closed event');
+            closeGame();
+        });
+
+        console.log('✅ games.js: All event handlers registered!');
+    }
+
+// Запускаем инициализацию при загрузке страницы
+document.addEventListener('DOMContentLoaded', function () {
+    console.log('🎮 games.js: DOM loaded, initializing...');
+    initializeGameInvitations();
+});
+
+// Также пытаемся инициализировать сразу, на случай если DOM уже загружен
+if (document.readyState === 'loading') {
+    // DOM еще загружается, ждем события
+} else {
+    // DOM уже загружен
+    console.log('🎮 games.js: DOM already loaded, initializing...');
+    initializeGameInvitations();
+}
+
+// Инициализация состояния панелей после загрузки DOM
+document.addEventListener('DOMContentLoaded', () => {
+    // Проверяем, была ли активная игра закрыта пользователем
+    const activeGameClosed = localStorage.getItem('wt_active_game_closed') === 'true';
+    console.log('Active game was closed by user:', activeGameClosed);
+
+    // Скрываем активную игру, если она была закрыта
+    if (activeGameClosed) {
+        const panel = document.getElementById('activeGamePanel');
+        if (panel) {
+            panel.classList.add('hidden');
+            panel.style.display = 'none';
+            console.log('Hiding active game panel on page load');
+        }
+    }
+
+    // Инициализируем состояние панели игр
+    const panel = document.getElementById('gamesPanel');
+    if (panel) {
+        try {
+            const isMobile = window.innerWidth <= 767;
+            const saved = localStorage.getItem('wt_games_collapsed');
+
+            // На мобильных по умолчанию свернуто, на десктопе - развернуто
+            const shouldCollapse = isMobile ? (saved !== 'false') : (saved === 'true');
+
+            if (shouldCollapse) {
+                panel.classList.add('collapsed');
+                const container = document.getElementById('gameContainer');
+                if (container) container.style.display = 'none';
+                const button = panel.querySelector('.toggle-panel');
+                if (button) {
+                    button.textContent = '+';
+                    button.title = 'Развернуть';
+                }
+            }
+        } catch (e) { }
+    }
+});
+
+
+// Показать модальное окно выбора соперника
+function showOpponentSelector(gameType) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay opponent-selector';
+    modal.setAttribute('aria-hidden', 'false');
+    modal.style.display = 'flex';
+
+    let gameIcon = '';
+    let gameName = '';
+    switch (gameType) {
+        case 'chess': gameIcon = '♟️'; gameName = 'Шахматы'; break;
+        case 'tictactoe': gameIcon = '⭕'; gameName = 'Крестики-нолики'; break;
+        case 'poker': gameIcon = '🃏'; gameName = 'Покер'; break;
+        case 'cards': gameIcon = '🃏'; gameName = 'Карты'; break;
+    }
+
+    let html = '<div class="modal-content opponent-modal">';
+    html += '<div class="modal-header">';
+    html += '<h3>' + gameIcon + ' Выберите соперника для ' + gameName + '</h3>';
+    html += '<button class="secondary icon-btn" onclick="closeOpponentSelector()">✕</button>';
+    html += '</div>';
+
+    html += '<div class="opponent-sections">';
+
+    // Секция с ботами
+    html += '<div class="opponent-section">';
+    html += '<h4>🤖 Игра с ботом</h4>';
+    html += '<div class="bot-options">';
+
+    // Разные уровни сложности для ботов
+    const botLevels = [
+        { level: 'easy', name: 'Легкий', emoji: '🐣', description: 'Для начинающих' },
+        { level: 'medium', name: 'Средний', emoji: '😐', description: 'Нормальная игра' },
+        { level: 'hard', name: 'Сложный', emoji: '💪', description: 'Для опытных' }
+    ];
+
+    botLevels.forEach(bot => {
+        html += '<div class="opponent-option bot-option" onclick="selectBotLevel(\'' + gameType + '\', \'' + bot.level + '\')">';
+        html += '<div class="opponent-avatar">' + bot.emoji + '</div>';
+        html += '<div class="opponent-info">';
+        html += '<div class="opponent-name">' + bot.name + ' бот</div>';
+        html += '<div class="opponent-status">' + bot.description + '</div>';
+        html += '</div>';
+        html += '</div>';
+    });
+
+    html += '</div>';
+    html += '</div>';
+
+    // Секция с игроками в комнате
+    html += '<div class="opponent-section">';
+    html += '<h4>👥 Игроки в комнате</h4>';
+    html += '<div class="opponent-list">';
+
+    // Проверяем, есть ли другие игроки
+    const otherPlayers = window.roomPlayers ? window.roomPlayers.filter(p => p.id !== (window.socket?.id || 'self')) : [];
+
+    if (otherPlayers.length > 0) {
+        otherPlayers.forEach(player => {
+            const isInGame = false; // TODO: проверить, находится ли игрок в игре
+            html += '<div class="opponent-option player-option ' + (isInGame ? 'busy' : 'available') + '" onclick="invitePlayer(\'' + player.id + '\', \'' + gameType + '\')">';
+            html += '<div class="opponent-avatar">' + (player.emoji || '👤') + '</div>';
+            html += '<div class="opponent-info">';
+            html += '<div class="opponent-name">' + (player.name || 'Игрок') + '</div>';
+            html += '<div class="opponent-status">' + (isInGame ? 'В игре' : 'Готов к игре') + '</div>';
+            html += '</div>';
+            html += '<div class="opponent-status-indicator ' + (isInGame ? 'busy' : 'online') + '"></div>';
+            html += '</div>';
+        });
+    } else {
+        html += '<div class="no-players">';
+        html += '<div class="no-players-icon">👤❓</div>';
+        html += '<div class="no-players-text">В комнате нет других игроков</div>';
+        html += '<div class="no-players-subtext">Пригласите друзей или играйте с ботом!</div>';
+        html += '</div>';
+    }
+
+    html += '</div>';
+    html += '</div>';
+
+    html += '</div>'; // Закрываем opponent-sections
+    html += '</div>';
+
+    modal.innerHTML = html;
+    document.body.appendChild(modal);
+
+    // Анимация появления
+    setTimeout(() => {
+        modal.style.opacity = '1';
+        modal.querySelector('.modal-content').style.transform = 'scale(1)';
+    }, 10);
+}
+
+function closeOpponentSelector() {
+    const modal = document.querySelector('.opponent-selector');
+    if (modal) {
+        modal.style.opacity = '0';
+        modal.querySelector('.modal-content').style.transform = 'scale(0.8)';
+        setTimeout(() => {
+            modal.remove();
+        }, 300);
+    }
+}
+
+function selectBot(gameType) {
+    // По умолчанию выбираем среднего бота для обратной совместимости
+    selectBotLevel(gameType, 'medium');
+}
+
+function selectBotLevel(gameType, level) {
+    let botEmoji = '🤖';
+    let botName = 'Бот';
+
+    switch (level) {
+        case 'easy':
+            botEmoji = '🐣';
+            botName = 'Легкий бот';
+            break;
+        case 'medium':
+            botEmoji = '😐';
+            botName = 'Средний бот';
+            break;
+        case 'hard':
+            botEmoji = '💪';
+            botName = 'Сложный бот';
+            break;
+    }
+
+    window.currentOpponent = {
+        type: 'bot',
+        level: level,
+        name: botName,
+        emoji: botEmoji
+    };
+
+    closeOpponentSelector();
+    startGameWithOpponent(gameType);
+}
+
+function invitePlayer(playerId, gameType) {
+    if (window.socket && window.roomId) {
+        window.socket.emit('send-game-invitation', {
+            roomId: window.roomId,
+            targetPlayerId: playerId,
+            gameType: gameType,
+            senderName: window.userEmoji || 'Игрок'
+        });
+
+        // Показываем уведомление об отправке приглашения
+        showNotification('Приглашение отправлено! Ожидание ответа...', 'info');
+        closeOpponentSelector();
+    }
+}
+
+function showGameInvitation(data) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay game-invitation';
+    modal.setAttribute('aria-hidden', 'false');
+    modal.style.display = 'flex';
+
+    let gameIcon = '';
+    let gameName = '';
+    switch (data.gameType) {
+        case 'chess': gameIcon = '♟️'; gameName = 'Шахматы'; break;
+        case 'tictactoe': gameIcon = '⭕'; gameName = 'Крестики-нолики'; break;
+        case 'poker': gameIcon = '🃏'; gameName = 'Покер'; break;
+        case 'cards': gameIcon = '🃏'; gameName = 'Карты'; break;
+    }
+
+    let html = '<div class="modal-content invitation-modal">';
+    html += '<div class="modal-header">';
+    html += '<h3>' + gameIcon + ' Приглашение в игру</h3>';
+    html += '</div>';
+    html += '<div class="invitation-content">';
+    html += '<div class="invitation-message">';
+    html += '<div class="inviter">' + (data.senderEmoji || '👤') + ' ' + (data.senderName || 'Игрок') + '</div>';
+    html += '<div class="game-invite">приглашает вас сыграть в <strong>' + gameName + '</strong></div>';
+    html += '</div>';
+    html += '<div class="invitation-actions">';
+    html += '<button class="action-btn accept-btn" onclick="acceptInvitation(\'' + data.gameType + '\', \'' + data.senderId + '\')">✅ Принять</button>';
+    html += '<button class="back-btn decline-btn" onclick="declineInvitation(\'' + data.senderId + '\')">❌ Отклонить</button>';
+    html += '</div>';
+    html += '</div>';
+    html += '</div>';
+
+    modal.innerHTML = html;
+    document.body.appendChild(modal);
+
+    // Анимация появления
+    setTimeout(() => {
+        modal.style.opacity = '1';
+        modal.querySelector('.modal-content').style.transform = 'scale(1)';
+    }, 10);
+
+    // Автоматическое закрытие через 30 секунд
+    setTimeout(() => {
+        if (document.querySelector('.game-invitation')) {
+            declineInvitation(data.senderId);
+        }
+    }, 30000);
+}
+
+function acceptInvitation(gameType, senderId) {
+    console.log('🎯 ACCEPTING invitation:', { gameType, senderId });
+    if (window.socket && window.roomId) {
+        window.socket.emit('game-invitation-response', {
+            roomId: window.roomId,
+            senderId: senderId,
+            accepted: true,
+            gameType: gameType
+        });
+        console.log('📤 Sent game-invitation-response');
+    }
+
+    // Найти информацию об отправителе
+    const sender = window.roomPlayers.find(p => p.id === senderId);
+    window.currentOpponent = {
+        type: 'player',
+        id: senderId,
+        name: sender?.name || 'Игрок',
+        emoji: sender?.emoji || '👤'
+    };
+
+    closeInvitationModal();
+
+    // Устанавливаем ожидаемый тип игры, но не инициализируем её сразу
+    window.expectedGameType = gameType;
+
+    // Показываем сообщение об ожидании
+    showNotification('Ожидание начала игры...', 'info');
+
+    // Запускаем игру у принимающего приглашения
+    console.log('🚀 Starting game for invitation accepter');
+    setTimeout(() => {
+        startGameWithOpponent(gameType);
+    }, 500);
+}
+
+function declineInvitation(senderId) {
+    if (window.socket && window.roomId) {
+        window.socket.emit('game-invitation-response', {
+            roomId: window.roomId,
+            senderId: senderId,
+            accepted: false
+        });
+    }
+    closeInvitationModal();
+}
+
+function closeInvitationModal() {
+    const modal = document.querySelector('.game-invitation');
+    if (modal) {
+        modal.style.opacity = '0';
+        modal.querySelector('.modal-content').style.transform = 'scale(0.8)';
+        setTimeout(() => {
+            modal.remove();
+        }, 300);
+    }
+}
+
+function handleInvitationResponse(data) {
+    console.log('🎉 HANDLING invitation response:', data);
+    if (data.accepted) {
+        console.log('✅ Invitation ACCEPTED');
+        const opponent = window.roomPlayers.find(p => p.id === data.responderId);
+        window.currentOpponent = {
+            type: 'player',
+            id: data.responderId,
+            name: opponent?.name || 'Игрок',
+            emoji: opponent?.emoji || '👤'
+        };
+
+        // Запускаем игру у отправителя приглашения
+        console.log('🚀 Starting game for invitation sender');
+        startGameWithOpponent(data.gameType);
+
+        showNotification('Приглашение принято! Начинаем игру.', 'success');
+    } else {
+        console.log('❌ Invitation DECLINED');
+        showNotification('Приглашение отклонено.', 'warning');
+    }
+}
+
+function startGameWithOpponent(gameType) {
+    // Сбрасываем флаг закрытия активной игры, так как пользователь начинает новую
+    try { localStorage.removeItem('wt_active_game_closed'); } catch (e) { }
+
+    // Закрываем все модальные окна
+    closeOpponentSelector();
+    closeInvitationModal();
+
+    // Показываем панель игры
+    const panel = document.getElementById('activeGamePanel');
+    if (!panel) return;
+    const icon = document.getElementById('activeGameIcon');
+    const title = document.getElementById('activeGameTitle');
+    if (icon && title) {
+        if (gameType === 'chess') { icon.textContent = '♟️'; title.textContent = 'Шахматы'; }
+        else if (gameType === 'tictactoe') { icon.textContent = '⭕'; title.textContent = 'Крестики-нолики'; }
+        else if (gameType === 'cards') { icon.textContent = '🃏'; title.textContent = 'Карты'; }
+    }
+    panel.classList.remove('hidden');
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    // Запускаем игру
+    switch (gameType) {
+        case 'chess':
+            initNetworkChess();
+            break;
+        case 'tictactoe':
+            initNetworkTicTacToe();
+            break;
+        case 'poker':
+            // Инициализируем состояние для покера
+            if (!window.gameState) {
+                window.gameState = {
+                    gameType: 'poker',
+                    gameMode: 'poker',
+                    deck: [],
+                    playerHand: [],
+                    opponentHand: [],
+                    playerScore: 0,
+                    opponentScore: 0,
+                    currentPlayer: 'player',
+                    round: 1,
+                    gamePhase: 'exchange',
+                    players: [window.socket?.id, window.currentOpponent?.id]
+                };
+            }
+            initNetworkPoker();
+            break;
+        case 'durak':
+            // Инициализируем состояние для дурака
+            if (!window.gameState) {
+                window.gameState = {
+                    gameType: 'durak',
+                    gameMode: 'durak',
+                    deck: [],
+                    playerHand: [],
+                    opponentHand: [],
+                    attackingCards: [],
+                    defendingCards: [],
+                    trumpSuit: null,
+                    gamePhase: 'attack',
+                    currentAttacker: 'player',
+                    players: [window.socket?.id, window.currentOpponent?.id]
+                };
+            }
+            initNetworkDurak();
+            break;
+        case 'cards':
+            initCards();
+            break;
+    }
+}
+
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.textContent = message;
+
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+        notification.classList.add('show');
+    }, 10);
+
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            notification.remove();
+        }, 300);
+    }, 3000);
+}
+
+function updateParticipantsList() {
+    const participantsList = document.getElementById('participantsList');
+    const participantCount = document.getElementById('participantCount');
+
+    if (!participantsList || !participantCount) return;
+
+    // Очищаем текущий список
+    participantsList.innerHTML = '';
+
+    if (!window.roomPlayers || window.roomPlayers.length === 0) {
+        // Нет участников
+        participantsList.innerHTML = `
+            <div class="no-participants">
+                <div class="no-participants-icon">👤</div>
+                <div class="no-participants-text">Нет участников</div>
+            </div>
+        `;
+        if (participantCount) participantCount.textContent = '(0)';
+        return;
+    }
+
+    // Обновляем счетчик участников
+    if (participantCount) {
+        participantCount.textContent = `(${window.roomPlayers.length})`;
+    }
+
+    // Добавляем участников
+    window.roomPlayers.forEach(player => {
+        const participantDiv = document.createElement('div');
+        participantDiv.className = 'participant-item';
+
+        participantDiv.innerHTML = `
+            <div class="participant-avatar">${player.emoji || '👤'}</div>
+            <div class="participant-info">
+                <div class="participant-name">${player.name || 'Игрок'}</div>
+                <div class="participant-status">${player.id === window.socket?.id ? 'Вы' : 'В сети'}</div>
+            </div>
+        `;
+
+        participantsList.appendChild(participantDiv);
+    });
+}
+
+// Game Functions
+function openGame(game) {
+    console.log('openGame called with:', game);
+
+    // Специальная обработка для карточных игр - всегда показываем меню выбора игры
+    if (game === 'cards') {
+        console.log('Opening cards menu');
+        initCards();
+        return;
+    }
+
+    // Если пользователь уже в комнате, проверим наличие других игроков
+    if (window.roomId && window.socket) {
+        // Получаем количество других игроков в комнате (исключая себя)
+        const otherPlayers = window.roomPlayers.filter(p => p.id !== (window.socket?.id || 'self'));
+
+        if (otherPlayers.length === 0) {
+            // В комнате нет других игроков - автоматически выбираем бота
+            console.log('No other players in room, auto-selecting bot');
+            window.currentOpponent = { type: 'bot', name: 'Бот', emoji: '🤖' };
+            showNotification('В комнате нет других игроков. Играем с ботом! 🤖', 'info');
+            startGameDirectly(game);
+            return;
+        } else {
+            // В комнате есть другие игроки - показываем селектор соперников
+            console.log('Other players found in room, showing opponent selector');
+            // Обновляем список игроков в комнате
+            updateRoomPlayers();
+
+            // Показываем селектор соперника
+            setTimeout(() => {
+                showOpponentSelector(game);
+            }, 100);
+            return;
+        }
+    }
+
+    // Если соперник уже выбран, запускаем игру напрямую
+    if (window.currentOpponent) {
+        startGameDirectly(game);
+        return;
+    }
+
+    // Обновляем список игроков в комнате
+    updateRoomPlayers();
+
+    // Показываем селектор соперника
+    setTimeout(() => {
+        showOpponentSelector(game);
+    }, 100);
+}
+
+function startNetworkGame(game) {
+    console.log('Starting network game:', game);
+
+    // Сбрасываем флаг закрытия активной игры, так как пользователь начинает новую
+    try { localStorage.removeItem('wt_active_game_closed'); } catch (e) { }
+
+    window.currentGame = game;
+
+    // Инициализируем базовое состояние игры
+    window.gameState = {
+        gameType: game,
+        players: [],
+        currentPlayer: 0,
+        gameStarted: false
+    };
+
+    // Отправляем запрос на начало игры в комнате
+    if (window.socket && window.roomId) {
+        window.socket.emit('start-game', {
+            roomId: window.roomId,
+            gameType: game
+        });
+    }
+
+    // Показываем панель игры
+    const panel = document.getElementById('activeGamePanel');
+    if (panel) {
+        const icon = document.getElementById('activeGameIcon');
+        const title = document.getElementById('activeGameTitle');
+        if (icon && title) {
+            if (game === 'chess') { icon.textContent = '♟️'; title.textContent = 'Шахматы (сетевая)'; }
+            else if (game === 'tictactoe') { icon.textContent = '⭕'; title.textContent = 'Крестики-нолики (сетевая)'; }
+            else if (game === 'cards') { icon.textContent = '🃏'; title.textContent = 'Карты (сетевая)'; }
+        }
+        panel.classList.remove('hidden');
+        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // Показываем сообщение об ожидании
+    const container = document.getElementById('gameContainer');
+    if (container) {
+        container.innerHTML = `
+            <div class="game-waiting">
+                <h3>Ожидание начала игры...</h3>
+                <p>Другие игроки в комнате смогут присоединиться к игре</p>
+                <div class="game-controls">
+                    <button onclick="closeGame()">Отмена</button>
+                </div>
+            </div>
+        `;
+    }
+}
+
+function startGameDirectly(game) {
+    // Сбрасываем флаг закрытия активной игры, так как пользователь начинает новую
+    try { localStorage.removeItem('wt_active_game_closed'); } catch (e) { }
+
+    window.currentGame = game;
+    const panel = document.getElementById('activeGamePanel');
+    if (!panel) return;
+
+    if (container) {
+        container.innerHTML = `
+            <div class="game-waiting">
+                <h3>Ожидание начала игры...</h3>
+                <p>Другие игроки в комнате смогут присоединиться к игре</p>
+                window.currentGame = game;
+        const panel = document.getElementById('activeGamePanel');
+        if (!panel) return;
+
+        const icon = document.getElementById('activeGameIcon');
+        const title = document.getElementById('activeGameTitle');
+        if (icon && title) {
+            if (game === 'chess') { icon.textContent = '♟️'; title.textContent = 'Шахматы'; }
+            else if (game === 'tictactoe') { icon.textContent = '⭕'; title.textContent = 'Крестики-нолики'; }
+            else if (game === 'cards') { icon.textContent = '🃏'; title.textContent = 'Карты'; }
+        }
+        panel.classList.remove('hidden');
+        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+        // Отправляем запрос на сервер для начала игры
+        if (window.socket && window.roomId && window.currentOpponent?.type === 'player') {
+            window.socket.emit('game-start', {
+                roomId: window.roomId,
+                gameType: game,
+                opponentId: window.currentOpponent.id
+            });
+        } else {
+            // Если играем с ботом или нет подключения, запускаем локально
+            switch (game) {
+                case 'chess':
+                    if (window.initNetworkChess) window.initNetworkChess();
+                    break;
+                case 'tictactoe':
+                    if (window.initNetworkTicTacToe) window.initNetworkTicTacToe();
+                    break;
+                case 'poker':
+                    if (window.selectPoker) window.selectPoker();
+                    break;
+                case 'durak':
+                    if (window.selectDurak) window.selectDurak();
+                    break;
+                case 'cards':
+                    initCards();
+                    break;
+            }
+            case 'cards':
+                initCards();
+                break;
+        }
+    }
+}
+
+function closeGame() {
+    console.log('closeGame() called - closing active game');
+
+    // Сохраняем факт того, что пользователь закрыл активную игру
+    try { localStorage.setItem('wt_active_game_closed', 'true'); } catch (e) { }
+
+    // Скрываем панель активной игры
+    const panel = document.getElementById('activeGamePanel');
+    if (panel) {
+        console.log('Hiding active game panel');
+        panel.classList.add('hidden');
+        panel.style.display = 'none'; // Дополнительная гарантия
+    } else {
+        console.log('Active game panel not found');
+    }
+
+    // Полностью очищаем состояние игры
+    window.gameState = null;
+    window.currentOpponent = null;
+    window.currentGame = null;
+
+    // Очищаем содержимое активной игры
+    const activeGameContent = document.getElementById('activeGameContent');
+    if (activeGameContent) {
+        console.log('Clearing active game content');
+        activeGameContent.innerHTML = '';
+        activeGameContent.style.display = 'none'; // Дополнительная гарантия
+    }
+
+    // Восстанавливаем меню игр в gameContainer
+    const container = document.getElementById('gameContainer');
+    if (container) {
+        console.log('Restoring game menu');
+        container.style.display = ''; // Показываем контейнер
+        container.innerHTML = `
+            <h2>🎮 Игры</h2>
+            <p>Выберите игру для начала:</p>
+
+            <div class="games-grid">
+                <div class="game-card" onclick="openGame('tictactoe')">
+                    <div class="game-icon">⭕</div>
+                    <div class="game-title">Крестики-нолики</div>
+                    <div class="game-description">Классическая игра 3x3</div>
+                </div>
+
+                <div class="game-card" onclick="openGame('chess')">
+                    <div class="game-icon">♟️</div>
+                    <div class="game-title">Шахматы</div>
+                    <div class="game-description">Королевская игра</div>
+                </div>
+
+                <div class="game-card" onclick="openGame('cards')">
+                    <div class="game-icon">🃏</div>
+                    <div class="game-title">Карточные игры</div>
+                    <div class="game-description">Покер и Дурак</div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Показываем панель игр, если она была скрыта
+    const gamesPanel = document.getElementById('gamesPanel');
+    if (gamesPanel && gamesPanel.classList.contains('collapsed')) {
+        gamesPanel.classList.remove('collapsed');
+        const gameContainer = document.getElementById('gameContainer');
+        if (gameContainer) {
+            gameContainer.style.display = '';
+        }
+    }
+
+// Chess Game
+// Cards Game - Покер и Дурак
+function initCards() {
+    console.log('initCards called!');
+    console.trace('initCards call stack');
+
+    const container = document.getElementById('activeGameContent');
+    if (!container) return;
+
+    let html = '';
+
+    // Информация о сопернике
+    if (window.currentOpponent) {
+        html += '<div class="game-opponent-info">';
+        html += '<div class="opponent-avatar-small">' + window.currentOpponent.emoji + '</div>';
+        html += '<div class="opponent-name-small">' + window.currentOpponent.name + '</div>';
+        html += '<div class="opponent-type">' + (window.currentOpponent.type === 'bot' ? 'Бот' : 'Игрок') + '</div>';
+        html += '</div>';
+    }
+
+    html += '<div class="cards-status">Игра в карты</div>';
+    html += '<div class="cards-container">';
+    html += '<div class="cards-player-hand" id="playerHand"></div>';
+    html += '<div class="cards-opponent-hand" id="opponentHand"></div>';
+    html += '<div class="cards-table" id="cardsTable"></div>';
+    html += '</div>';
+    html += '<div class="cards-controls">';
+    html += '<button onclick="closeGame()" class="back-btn">Закрыть</button>';
+    html += '</div>';
+
+    container.innerHTML = html;
+    container.style.display = 'block'; // Убеждаемся, что содержимое видимо
+    console.log('HTML set to container');
+
+    // Инициализируем игру в карты
+    window.gameState = {
+        gameType: 'cards',
+        playerHand: [],
+        opponentHand: [],
+        deck: [],
+        table: [],
+        gameOver: false
+    };
+
+    // Набор карт
+    const suits = ['♥️', '♦️', '♣️', '♠️'];
+    const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+
+    // Создаем колоду
+    for (let suit of suits) {
+        for (let value of values) {
+            window.gameState.deck.push({ suit, value });
+        }
+    }
+
+    // Раздаем карты
+    for (let i = 0; i < 5; i++) {
+        window.gameState.playerHand.push(window.gameState.deck.pop());
+        window.gameState.opponentHand.push(window.gameState.deck.pop());
+    }
+
+    renderCardsGame();
+}
+
+function renderCardsGame() {
+    const playerHandElement = document.getElementById('playerHand');
+    const opponentHandElement = document.getElementById('opponentHand');
+    const tableElement = document.getElementById('cardsTable');
+
+    if (playerHandElement && opponentHandElement && tableElement) {
+        // Отрисовываем руку игрока
+        let playerHandHtml = '';
+        window.gameState.playerHand.forEach((card, index) => {
+            playerHandHtml += `<div class="card" data-index="${index}">${card.value}${card.suit}</div>`;
+        });
+        playerHandElement.innerHTML = playerHandHtml;
+
+        // Отрисовываем руку противника
+        let opponentHandHtml = '';
+        window.gameState.opponentHand.forEach((card, index) => {
+            opponentHandHtml += `<div class="card" data-index="${index}">${card.value}${card.suit}</div>`;
+        });
+        opponentHandElement.innerHTML = opponentHandHtml;
+
+        // Отрисовываем карты на столе
+        let tableHtml = '';
+        window.gameState.table.forEach((card, index) => {
+            tableHtml += `<div class="card" data-index="${index}">${card.value}${card.suit}</div>`;
+        });
+        tableElement.innerHTML = tableHtml;
+    }
+}
+
+function handleNetworkPokerMove(move) {
+    const { action, cardIndex, playerId } = move;
+
+    console.log('🎯 HANDLING poker move:', { action, cardIndex, playerId, currentPlayer: window.socket?.id });
+
+    if (action === 'exchange' && cardIndex !== undefined) {
+        // Игрок обменял карту
+        console.log('Player exchanged card at index:', cardIndex);
+
+        // Для сетевой игры просто обновляем локальное состояние
+        // Сервер должен синхронизировать состояние
+        if (window.gameState.deck && window.gameState.deck.length > 0) {
+            // Определяем, чья это рука
+            const isCurrentPlayer = playerId === window.socket?.id;
+
+            if (isCurrentPlayer) {
+                // Это наш ход - обновляем нашу руку
+                window.gameState.playerHand[cardIndex] = window.gameState.deck.pop();
+                console.log('Updated our hand');
+            } else {
+                // Это ход противника - обновляем руку противника
+                window.gameState.opponentHand[cardIndex] = window.gameState.deck.pop();
+                console.log('Updated opponent hand');
+            }
+
+            renderPokerGame();
+            showNotification(`Игрок обменял карту`, 'info');
+        } else {
+            console.warn('No cards left in deck for exchange');
+        }
+    } else if (action === 'check') {
+        // Игрок проверил комбинацию - запускаем проверку для обоих игроков
+        console.log('Player checked hand - should trigger result comparison');
+
+        // Для сетевой игры ждем, пока сервер обработает проверку
+        // Сервер должен отправить результат проверки
+        showNotification('Проверка комбинаций...', 'info');
+    }
+}
+
+function handleNetworkCardsMove(move) {
+    const { action, card, playerId, cardIndex } = move;
+
+    console.log('🎯 HANDLING cards move:', { action, card, playerId, cardIndex, currentPlayer: window.socket?.id });
+
+    if (action === 'play' && card) {
+        // Игрок сыграл карту
+        console.log('Player played card:', card);
+
+        // Определяем, чей это ход
+        const isCurrentPlayer = playerId === window.socket?.id;
+
+        if (isCurrentPlayer) {
+            // Это наш ход - удаляем карту из нашей руки
+            const index = window.gameState.playerHand.findIndex(c =>
+                c.suit === card.suit && c.value === card.value
+            );
+            if (index !== -1) {
+                window.gameState.playerHand.splice(index, 1);
+            }
+        } else {
+            // Это ход противника - удаляем карту из руки противника
+            const index = window.gameState.opponentHand.findIndex(c =>
+                c.suit === card.suit && c.value === card.value
+            );
+            if (index !== -1) {
+                window.gameState.opponentHand.splice(index, 1);
+            }
+        }
+
+        // Добавляем карту на стол
+        window.gameState.attackingCards.push(card);
+
+        // Обновляем фазу игры
+        window.gameState.gamePhase = 'defend';
+
+        renderDurakGame();
+
+        // Показываем уведомление
+        const playerName = isCurrentPlayer ? 'Вы' : 'Противник';
+        showNotification(`${playerName} сыграли ${card.value}${card.suit}`, 'info');
+
+    } else if (action === 'defend' && card) {
+        // Игрок отбился картой
+        console.log('Player defended with card:', card);
+
+        // Определяем, чей это ход
+        const isCurrentPlayer = playerId === window.socket?.id;
+
+        if (isCurrentPlayer) {
+            // Это наш ход - удаляем карту из нашей руки
+            const index = window.gameState.playerHand.findIndex(c =>
+                c.suit === card.suit && c.value === card.value
+            );
+            if (index !== -1) {
+                window.gameState.playerHand.splice(index, 1);
+            }
+        } else {
+            // Это ход противника - удаляем карту из руки противника
+            const index = window.gameState.opponentHand.findIndex(c =>
+                c.suit === card.suit && c.value === card.value
+            );
+            if (index !== -1) {
+                window.gameState.opponentHand.splice(index, 1);
+            }
+        }
+
+        // Добавляем карту в defendingCards
+        const lastAttackIndex = window.gameState.attackingCards.length - 1;
+        window.gameState.defendingCards[lastAttackIndex] = card;
+
+        // Проверяем, все ли карты отбиты
+        const allDefended = window.gameState.attackingCards.length === window.gameState.defendingCards.length;
+
+        if (allDefended) {
+            // Все карты отбиты - очищаем стол и меняем атакующего
+            window.gameState.attackingCards = [];
+            window.gameState.defendingCards = [];
+            window.gameState.currentAttacker = window.gameState.currentAttacker === 'player' ? 'opponent' : 'player';
+            window.gameState.gamePhase = 'attack';
+
+            // Добираем карты
+            refillDurakHands();
+        }
+
+        renderDurakGame();
+
+        // Показываем уведомление
+        const playerName = isCurrentPlayer ? 'Вы' : 'Противник';
+        showNotification(`${playerName} отбились ${card.value}${card.suit}`, 'info');
+
+    } else if (action === 'take') {
+        // Игрок взял карты
+        console.log('Player took cards');
+
+        // Определяем, чей это ход
+        const isCurrentPlayer = playerId === window.socket?.id;
+
+        if (isCurrentPlayer) {
+            // Мы взяли карты
+            window.gameState.playerHand.push(...window.gameState.attackingCards);
+            window.gameState.playerHand.push(...window.gameState.defendingCards);
+        } else {
+            // Противник взял карты
+            window.gameState.opponentHand.push(...window.gameState.attackingCards);
+            window.gameState.opponentHand.push(...window.gameState.defendingCards);
+        }
+
+        // Очищаем стол
+        window.gameState.attackingCards = [];
+        window.gameState.defendingCards = [];
+
+        // Меняем атакующего
+        window.gameState.currentAttacker = window.gameState.currentAttacker === 'player' ? 'opponent' : 'player';
+        window.gameState.gamePhase = 'attack';
+
+        // Добираем карты
+        refillDurakHands();
+
+        renderDurakGame();
+
+        // Показываем уведомление
+        const playerName = isCurrentPlayer ? 'Вы' : 'Противник';
+        showNotification(`${playerName} взяли карты со стола`, 'info');
+
+    } else if (action === 'pass') {
+        // Игрок пасует
+        console.log('Player passed');
+
+        // Логика паса зависит от текущей фазы
+        if (window.gameState.gamePhase === 'attack') {
+            // Атакующий пасует - завершаем раунд
+            window.gameState.attackingCards = [];
+            window.gameState.defendingCards = [];
+            window.gameState.currentAttacker = window.gameState.currentAttacker === 'player' ? 'opponent' : 'player';
+            window.gameState.gamePhase = 'attack';
+            refillDurakHands();
+        } else if (window.gameState.gamePhase === 'defend') {
+            // Защищающийся пасует - завершаем раунд
+            window.gameState.attackingCards = [];
+            window.gameState.defendingCards = [];
+            window.gameState.currentAttacker = window.gameState.currentAttacker === 'player' ? 'opponent' : 'player';
+            window.gameState.gamePhase = 'attack';
+            refillDurakHands();
+        }
+
+        renderDurakGame();
+
+        // Показываем уведомление
+        const playerName = playerId === window.socket?.id ? 'Вы' : 'Противник';
+        showNotification(`${playerName} пасовали`, 'info');
+    }
+}
+
+function makeBotMove() {
+    if (window.gameState.gameOver) return;
+
+    // Простая логика бота для крестиков-ноликов
+    const availableMoves = [];
+    for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 3; col++) {
+            if (window.gameState.board[row][col] === '') {
+                availableMoves.push({ row, col });
+            }
+        }
+    }
+
+    if (availableMoves.length > 0) {
+        // Бот пытается выиграть или заблокировать игрока
+        let bestMove = findBestMove() || availableMoves[Math.floor(Math.random() * availableMoves.length)];
+
+        window.gameState.board[bestMove.row][bestMove.col] = window.gameState.currentPlayer;
+        window.gameState.currentPlayer = window.gameState.currentPlayer === 'X' ? 'O' : 'X';
+
+        checkTicTacToeWinner();
+        renderTicTacToeBoard();
+    }
+}
+
+function startNewPokerGame() {
+    console.log('startNewPokerGame called');
+
+    // Полностью сбрасываем состояние игры
+    window.gameState = {
+        gameMode: 'poker',
+        deck: [],
+        playerHand: [],
+        opponentHand: [],
+        playerScore: 0,
+        opponentScore: 0,
+        currentPlayer: 'player',
+        round: 1,
+        gamePhase: 'exchange',
+        winner: null
+    };
+
+    createDeck();
+    shuffleDeck();
+    dealPokerCards();
+    renderPokerGame();
+
+    // Показываем уведомление
+    showNotification('🎮 Начата новая игра в покер!', 'info');
+}
+
+// Cards Game - Покер и Дурак
+function initCards() {
+    console.log('initCards called'); // Отладочное сообщение
+
+    // Полностью очищаем состояние игры перед показом меню карточных игр
+    window.gameState = {
+        gameMode: 'menu', // 'menu', 'poker', 'durak'
+        deck: [],
+        playerHand: [],
+        opponentHand: [],
+        attackingCards: [],
+        defendingCards: [],
+        trumpSuit: null,
+        gamePhase: 'attack',
+        currentAttacker: 'player'
+    };
+
+    renderCardsMenu();
+}
+
+function renderCardsMenu() {
+    console.log('renderCardsMenu called'); // Отладочное сообщение
+
+    // Показываем панель активной игры с правильным заголовком
+    const activeGamePanel = document.getElementById('activeGamePanel');
+    console.log('activeGamePanel found:', !!activeGamePanel);
+    if (activeGamePanel) {
+        activeGamePanel.classList.remove('hidden');
+        activeGamePanel.style.display = 'block'; // Показываем панель
+        document.getElementById('activeGameTitle').textContent = 'Карточные игры';
+        document.getElementById('activeGameIcon').textContent = '🃏';
+    }
+
+    const gamePanel = document.getElementById('activeGameContent');
+    console.log('gamePanel (activeGameContent) found:', !!gamePanel);
+    if (!gamePanel) {
+        console.error('activeGameContent not found!');
+        return;
+    }
+
+    gamePanel.style.display = 'block'; // Убеждаемся, что содержимое видимо
+
+    let html = '<div class="cards-menu">';
+
+    // Информация о сопернике
+    if (window.currentOpponent) {
+        html += '<div class="game-opponent-info">';
+        html += '<div class="opponent-avatar-small">' + window.currentOpponent.emoji + '</div>';
+        html += '<div class="opponent-name-small">' + window.currentOpponent.name + '</div>';
+        html += '<div class="opponent-type">' + (window.currentOpponent.type === 'bot' ? 'Бот' : 'Игрок') + '</div>';
+        html += '</div>';
+    }
+
+    html += '<h3>Выберите игру:</h3>';
+    html += '<div class="game-selection">';
+    html += '<button class="game-mode-btn" onclick="selectPoker()">🃏 Покер</button>';
+    html += '<button class="game-mode-btn" onclick="selectDurak()">🎴 Дурак</button>';
+    html += '</div>';
+    html += '<div class="game-rules">';
+    html += '<div class="rules-section">';
+    html += '<h4>Правила Покера:</h4>';
+    html += '<ul>';
+    html += '<li>Каждый игрок получает 5 карт</li>';
+    html += '<li>Цель: собрать лучшую покерную комбинацию</li>';
+    html += '<li>Комбинации (по возрастанию): пара, две пары, тройка, стрит, флеш, фул-хаус, каре, стрит-флеш</li>';
+    html += '<li>Можно менять до 3 карт за раз</li>';
+    html += '</ul>';
+    html += '</div>';
+    html += '<div class="rules-section">';
+    html += '<h4>Правила Дурака:</h4>';
+    html += '<ul>';
+    html += '<li>Каждый игрок получает 6 карт, определяется козырная масть</li>';
+    html += '<li>Цель: избавиться от всех карт первым</li>';
+    html += '<li>Атакующий кладёт карту, защищающийся должен побить её</li>';
+    html += '<li>Бить можно старшей картой той же масти или козырем</li>';
+    html += '<li>Если не можешь побить - забираешь все карты</li>';
+    html += '</ul>';
+    html += '</div>';
+    html += '</div>';
+    html += '<button onclick="closeGame()" class="close-btn">Закрыть</button>';
+    html += '</div>';
+
+    gamePanel.innerHTML = html;
+    console.log('HTML set to gamePanel'); // Проверяем, что HTML установлен
+}
+
+function startPoker() {
+    console.log('startPoker called');
+
+    // Полностью очищаем состояние игры перед запуском покера
+    window.gameState = {
+        gameMode: 'poker',
+        deck: [],
+        playerHand: [],
+        opponentHand: [],
+        playerScore: window.gameState?.playerScore || 0,
+        opponentScore: window.gameState?.opponentScore || 0,
+        currentPlayer: 'player',
+        round: window.gameState?.round || 1,
+        gamePhase: 'exchange', // 'exchange' или 'finished'
+        winner: null
+    };
+
+    createDeck();
+    shuffleDeck();
+    dealPokerCards();
+    renderPokerGame();
+
+    // Обновляем заголовок активной панели игры
+    const activeGamePanel = document.getElementById('activeGamePanel');
+    if (activeGamePanel) {
+        document.getElementById('activeGameTitle').textContent = 'Покер';
+        document.getElementById('activeGameIcon').textContent = '🃏';
+    }
+}
+
+function startDurak() {
+    console.log('startDurak called'); // Отладка
+
+    // Полностью очищаем состояние игры перед запуском дурака
+    window.gameState = {
+        gameMode: 'durak',
+        deck: [],
+        playerHand: [],
+        opponentHand: [],
+        attackingCards: [],
+        defendingCards: [],
+        trumpSuit: null,
+        gamePhase: 'attack',
+        currentAttacker: 'player'
+    };
+
+    console.log('Creating deck...'); // Отладка
+    createDeck();
+    console.log('Shuffling deck...'); // Отладка
+    shuffleDeck();
+    console.log('Setting trump suit...'); // Отладка
+    setTrumpSuit();
+    console.log('Dealing durak cards...'); // Отладка
+    dealDurakCards();
+    console.log('Rendering durak game...'); // Отладка
+
+    // Показываем панель активной игры
+    const activeGamePanel = document.getElementById('activeGamePanel');
+    if (activeGamePanel) {
+        activeGamePanel.classList.remove('hidden');
+        document.getElementById('activeGameTitle').textContent = 'Дурак';
+        document.getElementById('activeGameIcon').textContent = '🎴';
+    }
+
+    renderDurakGame();
+}
+
+function selectDurak() {
+    console.log('selectDurak called');
+    showOpponentSelector('durak');
+}
+
+function selectPoker() {
+    console.log('selectPoker called');
+    showOpponentSelector('poker');
+}
+
+function getCardPower(value) {
+    const powers = { '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14 };
+    return powers[value] || 0;
+}
+
+function createDeck() {
+    window.gameState.deck = [];
+    const suits = ['♠', '♥', '♦', '♣'];
+    const values = ['6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']; // Дурак играется с 36 картами
+
+    const getCardPower = (value) => {
+        const powers = { '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14 };
+        return powers[value] || 0;
+    };
+
+    for (let suit of suits) {
+        for (let value of values) {
+            window.gameState.deck.push({ suit, value, power: getCardPower(value) });
+        }
+    }
+}
+
+function shuffleDeck() {
+    for (let i = window.gameState.deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [window.gameState.deck[i], window.gameState.deck[j]] = [window.gameState.deck[j], window.gameState.deck[i]];
+    }
+}
+
+function setTrumpSuit() {
+    if (window.gameState.deck.length > 0) {
+        window.gameState.trumpSuit = window.gameState.deck[window.gameState.deck.length - 1].suit;
+    }
+}
+
+function dealPokerCards() {
+    window.gameState.playerHand = [];
+    window.gameState.opponentHand = [];
+
+    for (let i = 0; i < 5; i++) {
+        window.gameState.playerHand.push(window.gameState.deck.pop());
+        window.gameState.opponentHand.push(window.gameState.deck.pop());
+    }
+}
+
+function dealDurakCards() {
+    console.log('dealDurakCards called'); // Отладка
+    window.gameState.playerHand = [];
+    window.gameState.opponentHand = [];
+
+    console.log('Deck length before dealing:', window.gameState.deck.length); // Отладка
+
+    for (let i = 0; i < 6; i++) {
+        if (window.gameState.deck.length > 0) {
+            window.gameState.playerHand.push(window.gameState.deck.pop());
+        }
+        if (window.gameState.deck.length > 0) {
+            window.gameState.opponentHand.push(window.gameState.deck.pop());
+        }
+    }
+
+    // Определяем кто ходит первым (у кого самый младший козырь)
+    determineFirstPlayer();
+
+    console.log('Player hand:', window.gameState.playerHand); // Отладка
+    console.log('Opponent hand:', window.gameState.opponentHand); // Отладка
+    console.log('First attacker:', window.gameState.currentAttacker); // Отладка
+}
+
+function determineFirstPlayer() {
+    const trumpSuit = window.gameState.trumpSuit;
+
+    // Находим козыри у игрока
+    const playerTrumps = window.gameState.playerHand.filter(card => card.suit === trumpSuit);
+    const opponentTrumps = window.gameState.opponentHand.filter(card => card.suit === trumpSuit);
+
+    let playerLowestTrump = null;
+    let opponentLowestTrump = null;
+
+    if (playerTrumps.length > 0) {
+        playerLowestTrump = playerTrumps.reduce((lowest, card) =>
+            card.power < lowest.power ? card : lowest
+        );
+    }
+
+    if (opponentTrumps.length > 0) {
+        opponentLowestTrump = opponentTrumps.reduce((lowest, card) =>
+            card.power < lowest.power ? card : lowest
+        );
+    }
+
+    // Определяем кто ходит первым
+    if (playerLowestTrump && opponentLowestTrump) {
+        // У обоих есть козыри - ходит тот, у кого меньше
+        if (playerLowestTrump.power < opponentLowestTrump.power) {
+            window.gameState.currentAttacker = 'player';
+            window.gameState.gamePhase = 'attack';
+        } else {
+            window.gameState.currentAttacker = 'bot';
+            window.gameState.gamePhase = 'defend'; // Игрок защищается
+            // Бот атакует первым только если активная панель игры открыта
+            const activeGamePanel = document.getElementById('activeGamePanel');
+            if (activeGamePanel && !activeGamePanel.classList.contains('hidden')) {
+                setTimeout(() => {
+                    makeDurakBotAttack();
+                }, 1000);
+            }
+        }
+    } else if (playerLowestTrump) {
+        // Только у игрока есть козыри - он ходит первым
+        window.gameState.currentAttacker = 'player';
+        window.gameState.gamePhase = 'attack';
+    } else if (opponentLowestTrump) {
+        // Только у бота есть козыри - он ходит первым
+        window.gameState.currentAttacker = 'bot';
+        window.gameState.gamePhase = 'defend';
+        // Бот атакует первым только если активная панель игры открыта
+        const activeGamePanel = document.getElementById('activeGamePanel');
+        if (activeGamePanel && !activeGamePanel.classList.contains('hidden')) {
+            setTimeout(() => {
+                makeDurakBotAttack();
+            }, 1000);
+        }
+    } else {
+        // Ни у кого нет козырей - игрок ходит первым (по умолчанию)
+        window.gameState.currentAttacker = 'player';
+        window.gameState.gamePhase = 'attack';
+    }
+}
+
+function renderPokerGame() {
+    console.log('renderPokerGame called');
+
+    // Показываем панель активной игры
+    const activeGamePanel = document.getElementById('activeGamePanel');
+    if (activeGamePanel) {
+        activeGamePanel.classList.remove('hidden');
+        activeGamePanel.style.display = 'block'; // Показываем панель
+        document.getElementById('activeGameTitle').textContent = 'Покер';
+        document.getElementById('activeGameIcon').textContent = '🃏';
+    }
+
+    const gamePanel = document.getElementById('activeGameContent');
+    if (!gamePanel) return;
+
+    let html = '<div class="poker-game">';
+
+    // Информация о сопернике
+    if (window.currentOpponent) {
+        html += '<div class="game-opponent-info">';
+        html += '<div class="opponent-avatar-small">' + window.currentOpponent.emoji + '</div>';
+        html += '<div class="opponent-name-small">' + window.currentOpponent.name + '</div>';
+        html += '<div class="opponent-type">' + (window.currentOpponent.type === 'bot' ? 'Бот' : 'Игрок') + '</div>';
+        html += '</div>';
+    }
+
+    html += '<h3>🃏 Покер</h3>';
+    html += '<div class="game-info">';
+    html += '<div>Раунд: <strong>' + window.gameState.round + '</strong></div>';
+    html += '<div>Ваш счёт: ' + window.gameState.playerScore + '</div>';
+    html += '<div>Счёт противника: ' + window.gameState.opponentScore + '</div>';
+    html += '</div>';
+
+    // Карты противника (вверху)
+    html += '<div class="opponent-cards">';
+    html += '<h4>Карты противника:</h4>';
+    html += '<div class="cards-hand opponent-hand">';
+    for (let i = 0; i < window.gameState.opponentHand.length; i++) {
+        if (window.gameState.gamePhase === 'waiting' || window.gameState.gamePhase === 'finished') {
+            // Показываем открытые карты противника после проверки комбинации
+            const card = window.gameState.opponentHand[i];
+            const suitClass = getSuitClass(card.suit);
+            html += '<div class="card ' + suitClass + ' revealed" data-index="' + i + '">';
+            html += '<div class="card-value">' + card.value + '</div>';
+            html += '<div class="card-suit">' + card.suit + '</div>';
+            html += '</div>';
+        } else {
+            // В фазе обмена карты противника закрыты
+            html += '<div class="card card-back">🂠</div>';
+        }
+    }
+    html += '</div>';
+    html += '</div>';
+
+    // Центральная область (для показа комбинаций или обмена)
+    html += '<div class="poker-center">';
+    if (window.gameState.gamePhase === 'finished') {
+        const winner = window.gameState.winner;
+        html += '<div class="game-result">';
+        if (winner === 'player') {
+            html += '<div style="color: #28a745; font-size: 24px; font-weight: bold;">🎉 Вы выиграли игру!</div>';
+        } else if (winner === 'opponent') {
+            html += '<div style="color: #dc3545; font-size: 24px; font-weight: bold;">😞 Противник выиграл игру!</div>';
+        } else {
+            html += '<div style="color: #ffc107; font-size: 24px; font-weight: bold;">🤝 Ничья в игре!</div>';
+        }
+        html += '<div style="margin-top: 10px;">Игра окончена. Первый, кто набрал 10 очков, побеждает!</div>';
+        html += '</div>';
+    } else if (window.gameState.gamePhase === 'waiting') {
+        // Показываем стол с картами
+        html += '<div class="poker-table">';
+        html += '<div class="table-title">Сравнение комбинаций</div>';
+
+        // Карты игрока на столе
+        html += '<div class="table-player-cards">';
+        html += '<div class="player-label">Ваши карты:</div>';
+        html += '<div class="table-cards-row">';
+        for (let i = 0; i < window.gameState.playerHand.length; i++) {
+            const card = window.gameState.playerHand[i];
+            const suitClass = getSuitClass(card.suit);
+            html += '<div class="card ' + suitClass + ' on-table" data-index="' + i + '">';
+            html += '<div class="card-value">' + card.value + '</div>';
+            html += '<div class="card-suit">' + card.suit + '</div>';
+            html += '</div>';
+        }
+        html += '</div>';
+        html += '</div>';
+
+        // Карты противника на столе
+        html += '<div class="table-opponent-cards">';
+        html += '<div class="opponent-label">Карты противника:</div>';
+        html += '<div class="table-cards-row">';
+        for (let i = 0; i < window.gameState.opponentHand.length; i++) {
+            const card = window.gameState.opponentHand[i];
+            const suitClass = getSuitClass(card.suit);
+            html += '<div class="card ' + suitClass + ' on-table" data-index="' + i + '">';
+            html += '<div class="card-value">' + card.value + '</div>';
+            html += '<div class="card-suit">' + card.suit + '</div>';
+            html += '</div>';
+        }
+        html += '</div>';
+        html += '</div>';
+
+        html += '</div>';
+
+        // Добавляем область для показа результата
+        html += '<div class="poker-status">Определяем победителя...</div>';
+    } else if (window.gameState.gamePhase === 'exchange') {
+        html += '<div class="poker-status">Выберите карты для обмена или проверьте комбинацию</div>';
+    }
+    html += '</div>';
+
+    // Ваши карты (внизу)
+    html += '<div class="player-cards">';
+    html += '<h4>Ваши карты:</h4>';
+    html += '<div class="cards-hand player-hand">';
+    for (let i = 0; i < window.gameState.playerHand.length; i++) {
+        const card = window.gameState.playerHand[i];
+        const suitClass = getSuitClass(card.suit);
+        const isSelected = card.selected ? ' selected' : '';
+        html += '<div class="card ' + suitClass + isSelected + '" data-index="' + i + '">';
+        html += '<div class="card-value">' + card.value + '</div>';
+        html += '<div class="card-suit">' + card.suit + '</div>';
+        html += '</div>';
+    }
+    html += '</div>';
+    html += '</div>';
+
+    // Кнопки управления
+    html += '<div class="poker-controls">';
+    if (window.gameState.gamePhase === 'finished') {
+        html += '<button onclick="startNewPokerGame()" class="action-btn">🎮 Новая игра</button>';
+    } else if (window.gameState.gamePhase === 'exchange') {
+        html += '<button onclick="exchangeCards()" class="action-btn">Обменять выбранные</button>';
+        html += '<button onclick="checkPokerHand()" class="action-btn">Проверить комбинацию</button>';
+        html += '<button onclick="newPokerRound()" class="action-btn">Новый раунд</button>';
+    } else if (window.gameState.gamePhase === 'waiting') {
+        // Фаза ожидания следующего раунда - кнопки отключены
+        html += '<button disabled class="action-btn" style="opacity: 0.5;">Подготовка...</button>';
+    }
+    html += '<button onclick="backToMenu()" class="back-btn">Назад к меню</button>';
+    html += '</div>';
+
+    html += '</div>';
+    gamePanel.innerHTML = html;
+
+    // Добавляем обработчики для выбора карт
+    addPokerCardHandlers();
+}
+
+function renderDurakGame() {
+    console.log('renderDurakGame called'); // Отладка
+
+    // Показываем панель активной игры и скрываем основное меню
+    const activeGamePanel = document.getElementById('activeGamePanel');
+    const gameContainer = document.getElementById('gameContainer');
+
+    if (activeGamePanel) {
+        activeGamePanel.classList.remove('hidden');
+        activeGamePanel.style.display = 'block'; // Показываем панель
+        document.getElementById('activeGameTitle').textContent = 'Дурак';
+        document.getElementById('activeGameIcon').textContent = '🎴';
+    }
+
+    const gamePanel = document.getElementById('activeGameContent');
+    console.log('gamePanel for durak:', gamePanel); // Отладка
+    if (!gamePanel) {
+        console.error('activeGameContent not found!');
+        return;
+    }
+
+    // Проверяем, что gameState правильно инициализирован
+    if (!window.gameState) {
+        console.error('gameState not initialized');
+        return;
+    }
+
+    // Инициализируем массивы, если они не существуют
+    if (!window.gameState.opponentHand) window.gameState.opponentHand = [];
+    if (!window.gameState.playerHand) window.gameState.playerHand = [];
+    if (!window.gameState.attackingCards) window.gameState.attackingCards = [];
+    if (!window.gameState.defendingCards) window.gameState.defendingCards = [];
+
+    console.log('gameState:', window.gameState); // Отладка
+    console.log('playerHand length:', window.gameState.playerHand.length);
+    console.log('opponentHand length:', window.gameState.opponentHand.length);
+    console.log('Фаза игры:', window.gameState.gamePhase, 'Атакующий:', window.gameState.currentAttacker);
+    console.log('Атакующие карты:', window.gameState.attackingCards);
+    console.log('Защищающие карты:', window.gameState.defendingCards);
+
+    let html = '<div class="cards-menu">';
+    if (window.currentOpponent) {
+        html += '<div class="game-opponent-info">';
+        html += '<div class="opponent-avatar-small">' + window.currentOpponent.emoji + '</div>';
+        html += '<div class="opponent-name-small">' + window.currentOpponent.name + '</div>';
+        html += '<div class="opponent-type">' + (window.currentOpponent.type === 'bot' ? 'Бот' : 'Игрок') + '</div>';
+        html += '</div>';
+    }
+
+    html += '<h3>🎴 Дурак</h3>';
+    html += '<div class="game-info">';
+    html += '<div>Козырь: <span class="trump-suit ' + (window.gameState.trumpSuit ? getSuitClass(window.gameState.trumpSuit) : '') + '">' + (window.gameState.trumpSuit || '?') + '</span></div>';
+    html += '<div>Карт в колоде: ' + (window.gameState.deck ? window.gameState.deck.length : 0) + '</div>';
+
+    // Показываем кто сейчас атакует
+    const currentPhase = window.gameState.gamePhase === 'attack' ? 'Атака' : 'Защита';
+    const currentAttacker = window.gameState.currentAttacker === 'player' ? 'Вы' : 'Противник';
+    html += '<div>Фаза: ' + currentPhase + ' (' + currentAttacker + ')</div>';
+    html += '</div>';
+
+    // Карты противника (вверху)
+    html += '<div class="opponent-cards">';
+    html += '<h4>Карты противника (' + window.gameState.opponentHand.length + '):</h4>';
+    html += '<div class="cards-hand opponent-hand">';
+    for (let i = 0; i < window.gameState.opponentHand.length; i++) {
+        html += '<div class="card card-back">🂠</div>';
+    }
+    html += '</div>';
+    html += '</div>';
+
+    // Ваши карты (внизу)
+    html += '<div class="player-cards">';
+    html += '<h4>Ваши карты:</h4>';
+    html += '<div class="cards-hand player-hand">';
+    for (let i = 0; i < window.gameState.playerHand.length; i++) {
+        const card = window.gameState.playerHand[i];
+        if (card && card.suit && card.value) {
+            const suitClass = getSuitClass(card.suit);
+
+            // Проверяем, можно ли играть этой картой
+            let canPlay = false;
+            try {
+                if (window.gameState.gamePhase === 'attack' && window.gameState.currentAttacker === 'player') {
+                    // Игрок атакует
+                    if (window.gameState.attackingCards.length === 0) {
+                        canPlay = true; // Первая атака - любой картой
+                    } else {
+                        canPlay = canAttackOrThrowCard && canAttackOrThrowCard(card);
+                    }
+                } else if (window.gameState.gamePhase === 'defend' && window.gameState.currentAttacker === 'player') {
+                    // Игрок атаковал, бот защищается, игрок может подкинуть
+                    // Проверяем, все ли карты отбиты
+                    const allDefended = window.gameState.attackingCards.every((_, index) => window.gameState.defendingCards[index]);
+                    if (allDefended) {
+                        canPlay = canAttackOrThrowCard && canAttackOrThrowCard(card);
+                    }
+                } else if (window.gameState.gamePhase === 'defend' && window.gameState.currentAttacker === 'bot') {
+                    // Игрок защищается от бота
+                    const undefendedCards = window.gameState.attackingCards.filter((_, index) => !window.gameState.defendingCards[index]);
+                    canPlay = undefendedCards.some(attackCard => canDefendCard && canDefendCard(card, attackCard));
+                } else if (window.gameState.gamePhase === 'attack' && window.gameState.currentAttacker === 'bot') {
+                    // Бот атаковал, но еще не все карты отбиты - игрок может подкинуть
+                    const allDefended = window.gameState.attackingCards.every((_, index) => window.gameState.defendingCards[index]);
+                    if (allDefended) {
+                        canPlay = canAttackOrThrowCard && canAttackOrThrowCard(card);
+                    }
+                }
+            } catch (e) {
+                console.error('Error checking if card can be played:', e);
+                canPlay = true; // По умолчанию разрешаем играть картой
+            }
+
+            const playableClass = canPlay ? ' playable' : '';
+            html += '<div class="card ' + suitClass + playableClass + '" data-index="' + i + '" onclick="playDurakCard(' + i + ')">';
+            html += '<div class="card-value">' + card.value + '</div>';
+            html += '<div class="card-suit">' + card.suit + '</div>';
+            html += '</div>';
+        }
+    }
+    html += '</div>';
+    html += '</div>';
+
+    // Стол (посередине)
+    html += '<div class="durak-table">';
+    html += '<h4>Стол:</h4>';
+    html += '<div class="table-cards">';
+    for (let i = 0; i < window.gameState.attackingCards.length; i++) {
+        const attackCard = window.gameState.attackingCards[i];
+        const defendCard = window.gameState.defendingCards[i];
+
+        html += '<div class="card-pair">';
+        html += '<div class="card ' + getSuitClass(attackCard.suit) + ' attacking">';
+        html += '<div class="card-value">' + attackCard.value + '</div>';
+        html += '<div class="card-suit">' + attackCard.suit + '</div>';
+        html += '</div>';
+
+        if (defendCard) {
+            html += '<div class="card ' + getSuitClass(defendCard.suit) + ' defending">';
+            html += '<div class="card-value">' + defendCard.value + '</div>';
+            html += '<div class="card-suit">' + defendCard.suit + '</div>';
+            html += '</div>';
+        }
+        html += '</div>';
+    }
+    html += '</div>';
+    html += '</div>';
+
+    // Кнопки управления
+    html += '<div class="durak-controls">';
+
+    // Показываем разные кнопки в зависимости от фазы игры
+    if (window.gameState.gamePhase === 'defend' && window.gameState.currentAttacker === 'bot') {
+        // Бот атакует, игрок защищается
+        html += '<button onclick="takeDurakCards()" class="action-btn">Взять карты</button>';
+        html += '<button onclick="passDurakTurn()" class="action-btn">Пас (взять)</button>';
+    }
+
+    if (window.gameState.gamePhase === 'attack' && window.gameState.currentAttacker === 'player') {
+        // Игрок атакует - может пасовать (завершить атаку)
+        if (window.gameState.attackingCards.length > 0) {
+            html += '<button onclick="passDurakTurn()" class="action-btn">Пас (завершить атаку)</button>';
+        }
+    }
+
+    if (window.gameState.gamePhase === 'defend' && window.gameState.currentAttacker === 'player') {
+        // Игрок атаковал, бот отбился, игрок может подкинуть или пасовать
+        const allDefended = window.gameState.attackingCards.every((_, index) => window.gameState.defendingCards[index]);
+        if (allDefended && window.gameState.attackingCards.length > 0) {
+            html += '<button onclick="passDurakTurn()" class="action-btn">Пас (отбой)</button>';
+        }
+    }
+
+    if (window.gameState.gamePhase === 'defend' && window.gameState.currentAttacker === 'bot') {
+        // Бот атаковал, игрок отбился, теперь игрок может пасовать для отбоя
+        const allDefended = window.gameState.attackingCards.every((_, index) => window.gameState.defendingCards[index]);
+        if (allDefended && window.gameState.attackingCards.length > 0) {
+            html += '<button onclick="passDurakTurn()" class="action-btn">Пас (отбой)</button>';
+        }
+    }
+
+    html += '<button onclick="newDurakRound()" class="action-btn">Новая игра</button>';
+    html += '<button onclick="closeGame()" class="back-btn">Назад к меню</button>';
+    html += '</div>';
+
+    html += '</div>';
+
+    try {
+        gamePanel.innerHTML = html;
+        console.log('Durak HTML set successfully');
+    } catch (e) {
+        console.error('Error setting durak HTML:', e);
+    }
+}
+
+// Тестовая функция для дурака
+function testDurak() {
+    console.log('testDurak called');
+
+    // Устанавливаем бота как противника
+    window.currentOpponent = {
+        name: 'Умный Бот',
+        emoji: '🤖',
+        type: 'bot'
+    };
+
+    // Запускаем игру
+    startDurak();
+}
+
+function getSuitClass(suit) {
+    switch (suit) {
+        case '♥': return 'hearts';
+        case '♦': return 'diamonds';
+        case '♣': return 'clubs';
+        case '♠': return 'spades';
+        default: return '';
+    }
+}
+
+function addPokerCardHandlers() {
+    const cards = document.querySelectorAll('.player-cards .card');
+    cards.forEach(card => {
+        card.addEventListener('click', function () {
+            // Убираем выделение у всех карт
+            cards.forEach(c => c.classList.remove('selected'));
+
+            // Переключаем выделение только этой карты
+            this.classList.toggle('selected');
+        });
+    });
+}
+
+function exchangeCards() {
+    const selectedCards = document.querySelectorAll('.player-cards .card.selected');
+    if (selectedCards.length === 0) {
+        // Показываем сообщение в центральной области
+        const statusElement = document.querySelector('.poker-status');
+        if (statusElement) {
+            statusElement.innerHTML = '<div style="color: #dc3545;">Выберите карту для обмена</div>';
+        }
+        return;
+    }
+
+    // Меняем только одну выбранную карту
+    const selectedCard = selectedCards[0];
+    const index = parseInt(selectedCard.dataset.index);
+
+    if (window.socket && window.roomId && window.currentOpponent?.type === 'player') {
+        // Отправляем ход на сервер для сетевой игры
+        window.socket.emit('game-move', {
+            roomId: window.roomId,
+            gameType: 'poker',
+            move: {
+                action: 'exchange',
+                cardIndex: index,
+                playerId: window.socket.id
+            }
+        });
+
+        // Локально обновляем карту
+        if (window.gameState.deck.length > 0) {
+            window.gameState.playerHand[index] = window.gameState.deck.pop();
+
+            // Показываем информацию об обмене
+            const statusElement = document.querySelector('.poker-status');
+            if (statusElement) {
+                statusElement.innerHTML = '<div style="color: #28a745;">Карта обменяна! Теперь проверьте комбинацию.</div>';
+            }
+
+            renderPokerGame();
+        }
+    } else {
+        // Локальная игра с ботом
+        if (window.gameState.deck.length > 0) {
+            window.gameState.playerHand[index] = window.gameState.deck.pop();
+
+            // Показываем информацию об обмене
+            const statusElement = document.querySelector('.poker-status');
+            if (statusElement) {
+                statusElement.innerHTML = '<div style="color: #28a745;">Карта обменяна! Теперь проверьте комбинацию.</div>';
+            }
+
+            renderPokerGame();
+        } else {
+            const statusElement = document.querySelector('.poker-status');
+            if (statusElement) {
+                statusElement.innerHTML = '<div style="color: #dc3545;">В колоде нет карт для обмена</div>';
+            }
+        }
+    }
+}
+
+function getPokerCombination(hand) {
+    const values = hand.map(card => card.power).sort((a, b) => a - b);
+    const suits = hand.map(card => card.suit);
+
+    // Проверяем комбинации
+    const isFlush = suits.every(suit => suit === suits[0]);
+    const isStraight = values.every((val, i) => i === 0 || val === values[i - 1] + 1);
+
+    const valueCounts = {};
+    values.forEach(val => valueCounts[val] = (valueCounts[val] || 0) + 1);
+    const counts = Object.values(valueCounts).sort((a, b) => b - a);
+
+    if (isFlush && isStraight) return { name: 'Стрит-флеш', rank: 8 };
+    if (counts[0] === 4) return { name: 'Каре', rank: 7 };
+    if (counts[0] === 3 && counts[1] === 2) return { name: 'Фул-хаус', rank: 6 };
+    if (isFlush) return { name: 'Флеш', rank: 5 };
+    if (isStraight) return { name: 'Стрит', rank: 4 };
+    if (counts[0] === 3) return { name: 'Тройка', rank: 3 };
+    if (counts[0] === 2 && counts[1] === 2) return { name: 'Две пары', rank: 2 };
+    if (counts[0] === 2) return { name: 'Пара', rank: 1 };
+    return { name: 'Старшая карта', rank: 0 };
+}
+
+function checkPokerHand() {
+    // Отправляем событие проверки комбинации, если играем с игроком
+    if (window.socket && window.roomId && window.currentOpponent?.type === 'player') {
+        window.socket.emit('game-move', {
+            roomId: window.roomId,
+            gameType: 'poker',
+            move: {
+                action: 'check'
+            }
+        });
+    }
+
+{{ ... }}
+    const combination = getPokerCombination(window.gameState.playerHand);
+
+    // Если играем с ботом, генерируем комбинацию для бота
+    let opponentCombination;
+    if (window.currentOpponent?.type === 'bot') {
+        // Бот тоже может обменять карты перед проверкой
+        makePokerBotMove();
+        opponentCombination = getPokerCombination(window.gameState.opponentHand);
+    } else {
+        opponentCombination = getPokerCombination(window.gameState.opponentHand);
+    }
+
+    let result = '';
+    if (combination.rank > opponentCombination.rank) {
+        result = 'Вы выиграли раунд!';
+        window.gameState.playerScore++;
+    } else if (combination.rank < opponentCombination.rank) {
+        result = 'Противник выиграл раунд!';
+        window.gameState.opponentScore++;
+    } else {
+        result = 'Ничья в раунде!';
+    }
+
+    // Проверяем, не закончилась ли игра
+    const WINNING_SCORE = 10;
+    if (window.gameState.playerScore >= WINNING_SCORE) {
+        window.gameState.gamePhase = 'finished';
+        window.gameState.winner = 'player';
+
+        // Отправляем событие завершения игры
+        if (window.socket && window.roomId && window.currentOpponent?.type === 'player') {
+            window.socket.emit('game-ended', {
+                roomId: window.roomId,
+                winner: 'player',
+                gameType: 'poker'
+            });
+        }
+    } else if (window.gameState.opponentScore >= WINNING_SCORE) {
+        window.gameState.gamePhase = 'finished';
+        window.gameState.winner = 'opponent';
+
+        // Отправляем событие завершения игры
+        if (window.socket && window.roomId && window.currentOpponent?.type === 'player') {
+            window.socket.emit('game-ended', {
+                roomId: window.roomId,
+                winner: 'opponent',
+                gameType: 'poker'
+            });
+        }
+    } else {
+        // Игра продолжается - устанавливаем фазу ожидания
+        window.gameState.gamePhase = 'waiting';
+    }
+
+    // Сначала показываем стол с картами
+    renderPokerGame();
+
+    // Сохраняем результаты для показа через 2 секунды
+    window.gameState.lastResult = {
+        combination,
+        opponentCombination,
+        result
+    };
+
+    // Через 2 секунды показываем результат
+    setTimeout(() => {
+        showPokerResult();
+    }, 2000);
+}
+
+function showPokerResult() {
+    if (!window.gameState.lastResult) return;
+
+    const { combination, opponentCombination, result } = window.gameState.lastResult;
+
+    // Показываем результат в центральной области
+    const statusElement = document.querySelector('.poker-status');
+    if (statusElement) {
+        if (window.gameState.gamePhase === 'finished') {
+            // Игра окончена - показываем финальный результат
+            statusElement.innerHTML = `
+                <div style="margin-bottom: 10px;"><strong>Результат раунда ${window.gameState.round}:</strong></div>
+                <div>Ваша комбинация: <span style="color: var(--accent-primary);">${combination.name}</span></div>
+                <div>Комбинация противника: <span style="color: var(--accent-primary);">${opponentCombination.name}</span></div>
+                <div style="margin-top: 20px; font-size: 32px; font-weight: bold; color: ${result.includes('Вы выиграли') ? '#28a745' : result.includes('Противник выиграл') ? '#dc3545' : '#ffc107'};">${result.includes('Вы выиграли') ? 'ПОБЕДА!' : result.includes('Противник выиграл') ? 'ПОРАЖЕНИЕ!' : 'НИЧЬЯ!'}</div>
+                <div style="margin-top: 10px; color: #666;">Новый раунд через 3 секунды...</div>
+            `;
+
+            // Автоматически начинаем новый раунд через 3 секунды
+            setTimeout(() => {
+                newPokerRound();
+            }, 3000);
+        } else {
+            // Обычный раунд - показываем результат и ждем действий игрока
+            statusElement.innerHTML = `
+                <div style="margin-bottom: 10px;"><strong>Результат раунда ${window.gameState.round}:</strong></div>
+                <div>Ваша комбинация: <span style="color: var(--accent-primary);">${combination.name}</span></div>
+                <div>Комбинация противника: <span style="color: var(--accent-primary);">${opponentCombination.name}</span></div>
+                <div style="margin-top: 20px; font-size: 32px; font-weight: bold; color: ${result.includes('Вы выиграли') ? '#28a745' : result.includes('Противник выиграл') ? '#dc3545' : '#ffc107'};">${result.includes('Вы выиграли') ? 'ПОБЕДА!' : result.includes('Противник выиграл') ? 'ПОРАЖЕНИЕ!' : 'НИЧЬЯ!'}</div>
+                <div style="margin-top: 10px; color: #666;">Новый раунд через 3 секунды...</div>
+            `;
+
+            // Автоматически начинаем новый раунд через 3 секунды
+            setTimeout(() => {
+                newPokerRound();
+            }, 3000);
+        }
+    }
+
+    // Не вызываем renderPokerGame() здесь, чтобы не перезаписать результат
+}
+
+function makePokerBotMove() {
+    if (window.currentOpponent?.type !== 'bot') return;
+
+    // Простая логика бота для покера: обменивает слабые карты
+    const hand = window.gameState.opponentHand;
+    const combination = getPokerCombination(hand);
+
+    // Если у бота уже хорошая комбинация (пара или лучше), не меняет карты
+    if (combination.rank >= 2) return;
+
+    // Иначе меняет 1-3 случайные карты
+    const cardsToChange = Math.floor(Math.random() * 3) + 1;
+    const changedIndices = [];
+
+    for (let i = 0; i < cardsToChange; i++) {
+        let randomIndex;
+        do {
+            randomIndex = Math.floor(Math.random() * hand.length);
+        } while (changedIndices.includes(randomIndex));
+
+        changedIndices.push(randomIndex);
+
+        if (window.gameState.deck.length > 0) {
+            window.gameState.opponentHand[randomIndex] = window.gameState.deck.pop();
+        }
+    }
+}
+
+function newPokerRound() {
+    if (window.gameState.gamePhase === 'finished') {
+        // Игра окончена, начинаем новую игру
+        startNewPokerGame();
+        return;
+    }
+
+    // Увеличиваем счетчик раундов
+    window.gameState.round++;
+    // Сбрасываем фазу к обмену карт
+    window.gameState.gamePhase = 'exchange';
+
+    createDeck();
+    shuffleDeck();
+    dealPokerCards();
+    renderPokerGame();
+}
+
+function playDurakCard(cardIndex) {
+    const card = window.gameState.playerHand[cardIndex];
+    console.log('Играем картой:', card, 'Фаза:', window.gameState.gamePhase, 'Атакующий:', window.gameState.currentAttacker);
+
+    if (!card) {
+        console.error('Карта не найдена по индексу:', cardIndex);
+        return;
+    }
+
+    if (window.gameState.gamePhase === 'attack' && window.gameState.currentAttacker === 'player') {
+        // Игрок атакует
+        if (window.gameState.attackingCards.length === 0) {
+            // Первая атака - любой картой
+            if (window.socket && window.roomId && window.currentOpponent?.type === 'player') {
+                // Сетевая игра - отправляем ход на сервер
+                window.socket.emit('game-move', {
+                    roomId: window.roomId,
+                    gameType: 'durak',
+                    move: {
+                        action: 'play',
+                        card: card,
+                        playerId: window.socket.id,
+                        cardIndex: cardIndex
+                    }
+                });
+            }
+
+            window.gameState.attackingCards.push(card);
+            window.gameState.playerHand.splice(cardIndex, 1);
+            window.gameState.gamePhase = 'defend';
+            console.log('Первая атака картой:', card);
+
+            renderDurakGame();
+
+            // Бот пытается защититься
+            if (window.currentOpponent?.type === 'bot') {
+                setTimeout(() => {
+                    makeDurakBotDefense();
+                }, 1000);
+            }
+        } else {
+            // Подкидывание - только карты того же достоинства что уже на столе
+            if (canAttackOrThrowCard(card)) {
+                if (window.socket && window.roomId && window.currentOpponent?.type === 'player') {
+                    // Сетевая игра - отправляем ход на сервер
+                    window.socket.emit('game-move', {
+                        roomId: window.roomId,
+                        gameType: 'durak',
+                        move: {
+                            action: 'play',
+                            card: card,
+                            playerId: window.socket.id,
+                            cardIndex: cardIndex
+                        }
+                    });
+                }
+
+                window.gameState.attackingCards.push(card);
+                window.gameState.playerHand.splice(cardIndex, 1);
+                console.log('Подкидываем карту:', card);
+
+                renderDurakGame();
+
+                // Бот пытается защититься от новой карты
+                if (window.currentOpponent?.type === 'bot') {
+                    setTimeout(() => {
+                        makeDurakBotDefense();
+                    }, 1000);
+                }
+            } else {
+                alert('Нельзя подкинуть эту карту! Можно подкидывать только карты того же достоинства, что уже лежат на столе.');
+            }
+        }
+    } else if (window.gameState.gamePhase === 'defend' && window.gameState.currentAttacker === 'bot') {
+        // Игрок защищается от атаки бота
+        const undefendedCards = window.gameState.attackingCards.filter((_, index) => !window.gameState.defendingCards[index]);
+
+        if (undefendedCards.length === 0) {
+            alert('Все карты уже отбиты!');
+            return;
+        }
+
+        // Ищем первую неотбитую карту, которую можно отбить этой картой
+        let defendedIndex = -1;
+        for (let i = 0; i < window.gameState.attackingCards.length; i++) {
+            if (!window.gameState.defendingCards[i]) {
+                const attackCard = window.gameState.attackingCards[i];
+                if (canDefendCard(card, attackCard)) {
+                    defendedIndex = i;
+                    break;
+                }
+            }
+        }
+
+        if (defendedIndex !== -1) {
+            // Отбиваемся
+            if (window.socket && window.roomId && window.currentOpponent?.type === 'player') {
+                // Сетевая игра - отправляем ход на сервер
+                window.socket.emit('game-move', {
+                    roomId: window.roomId,
+                    gameType: 'durak',
+                    move: {
+                        action: 'defend',
+                        card: card,
+                        playerId: window.socket.id,
+                        cardIndex: cardIndex
+                    }
+                });
+            }
+
+            window.gameState.defendingCards[defendedIndex] = card;
+            window.gameState.playerHand.splice(cardIndex, 1);
+            console.log('Отбиваемся картой:', card, 'от карты:', window.gameState.attackingCards[defendedIndex]);
+
+            renderDurakGame();
+
+            // Проверяем, все ли карты отбиты
+            const allDefended = window.gameState.attackingCards.every((_, index) => window.gameState.defendingCards[index]);
+
+            if (allDefended) {
+                // Все карты отбиты - теперь бот может подкинуть или игрок может пасовать
+                console.log('Все карты отбиты, бот может подкинуть, игрок может пасовать');
+                if (window.currentOpponent?.type === 'bot') {
+                    setTimeout(() => {
+                        makeDurakBotThrow();
+                    }, 1000);
+                }
+            } else {
+                // Есть еще неотбитые карты, бот должен защищаться
+                if (window.currentOpponent?.type === 'bot') {
+                    setTimeout(() => {
+                        makeDurakBotDefense();
+                    }, 1000);
+                }
+            }
+        } else {
+            alert('Этой картой нельзя отбиться от атакующих карт!');
+        }
+    } else if (window.gameState.gamePhase === 'defend' && window.gameState.currentAttacker === 'player') {
+        // Бот атаковал, игрок может подкинуть карты
+        console.log('Попытка подкинуть карту после отбоя бота');
+        console.log('Все карты отбиты?', window.gameState.attackingCards.every((_, index) => window.gameState.defendingCards[index]));
+        console.log('Можно подкинуть эту карту?', canAttackOrThrowCard(card));
+
+        if (canAttackOrThrowCard(card)) {
+            if (window.socket && window.roomId && window.currentOpponent?.type === 'player') {
+                // Сетевая игра - отправляем ход на сервер
+                window.socket.emit('game-move', {
+                    roomId: window.roomId,
+                    gameType: 'durak',
+                    move: {
+                        action: 'play',
+                        card: card,
+                        playerId: window.socket.id,
+                        cardIndex: cardIndex
+                    }
+                });
+            }
+
+            window.gameState.attackingCards.push(card);
+            window.gameState.playerHand.splice(cardIndex, 1);
+            console.log('Игрок подкидывает карту после отбоя бота:', card);
+
+            renderDurakGame();
+
+            // Бот должен защититься от подкинутой карты
+            if (window.currentOpponent?.type === 'bot') {
+                setTimeout(() => {
+                    makeDurakBotDefense();
+                }, 1000);
+            }
+        } else {
+            alert('Нельзя подкинуть эту карту! Можно подкидывать только карты того же достоинства, что уже лежат на столе.');
+        }
+    } else if (window.gameState.gamePhase === 'attack' && window.gameState.currentAttacker === 'bot') {
+        // Бот атаковал, игрок может подкинуть если все карты отбиты
+        const allDefended = window.gameState.attackingCards.every((_, index) => window.gameState.defendingCards[index]);
+
+        if (allDefended && canAttackOrThrowCard(card)) {
+            if (window.socket && window.roomId && window.currentOpponent?.type === 'player') {
+                // Сетевая игра - отправляем ход на сервер
+                window.socket.emit('game-move', {
+                    roomId: window.roomId,
+                    gameType: 'durak',
+                    move: {
+                        action: 'play',
+                        card: card,
+                        playerId: window.socket.id,
+                        cardIndex: cardIndex
+                    }
+                });
+            }
+
+            window.gameState.attackingCards.push(card);
+            window.gameState.playerHand.splice(cardIndex, 1);
+            window.gameState.gamePhase = 'defend';
+            console.log('Игрок подкидывает карту после отбоя:', card);
+
+            renderDurakGame();
+
+            // Бот пытается защититься от подкинутой карты
+            if (window.currentOpponent?.type === 'bot') {
+                setTimeout(() => {
+                    makeDurakBotDefense();
+                }, 1000);
+            }
+        } else if (!allDefended) {
+            alert('Сначала нужно отбить все атакующие карты!');
+        } else {
+            alert('Нельзя подкинуть эту карту! Можно подкидывать только карты того же достоинства, что уже лежат на столе.');
+        }
+    } else {
+        console.log('Сейчас не ваш ход или неподходящая фаза игры');
+    }
+}
+
+function makeDurakBotDefense() {
+    if (window.currentOpponent?.type !== 'bot') return;
+
+    console.log('Бот пытается защититься');
+    console.log('Состояние стола:', {
+        attackingCards: window.gameState.attackingCards,
+        defendingCards: window.gameState.defendingCards,
+        gamePhase: window.gameState.gamePhase,
+        currentAttacker: window.gameState.currentAttacker
+    });
+
+    const analyzer = window.durakAnalyzer;
+    const analysis = analyzer.analyzeGameState();
+
+    // Находим все неотбитые карты
+    const undefendedCards = analysis.undefendedCards;
+    console.log('Неотбитые карты:', undefendedCards);
+
+    if (undefendedCards.length === 0) {
+        console.log('Все карты отбиты, переходим к подкидыванию');
+        // Все карты отбиты, бот может подкинуть
+        if (window.currentOpponent?.type === 'bot') {
+            setTimeout(() => {
+                makeDurakBotThrow();
+            }, 1000);
+        }
+        return;
+    }
+
+    const cardToDefend = undefendedCards[0];
+    console.log('Защищаемся от карты:', cardToDefend);
+
+    // Используем умный анализ для выбора защитной карты
+    const bestDefenseCard = analyzer.getBestDefenseCard(cardToDefend);
+    console.log('Лучшая защитная карта:', bestDefenseCard);
+
+    // Оценка риска взятия карт
+    const riskScore = analyzer.evaluateRisk();
+    const shouldDefend = bestDefenseCard && (riskScore < 8 || Math.random() < 0.85);
+    console.log('Риск:', riskScore, 'Защищаться:', shouldDefend);
+
+    if (shouldDefend) {
+        const cardIndex = window.gameState.opponentHand.indexOf(bestDefenseCard);
+        if (cardIndex !== -1) {
+            window.gameState.defendingCards.push(bestDefenseCard);
+            window.gameState.opponentHand.splice(cardIndex, 1);
+
+            console.log(`Бот защищается картой: ${bestDefenseCard.value}${bestDefenseCard.suit} от ${cardToDefend.value}${cardToDefend.suit}`);
+
+            // Проверяем, все ли карты отбиты
+            if (window.gameState.attackingCards.length === window.gameState.defendingCards.length) {
+                // Все карты отбиты, но игрок может подкинуть
+                // Фаза остается 'defend', но теперь игрок может подкидывать
+                console.log('Все карты отбиты, игрок может подкинуть или пасовать');
+                // НЕ очищаем стол и НЕ меняем атакующего - игрок может подкинуть
+                // НЕ делаем автоматический отбой - только по кнопке "Пас"
+            } else {
+                // Еще есть неотбитые карты, продолжаем защиту
+                console.log('Остались неотбитые карты, продолжаем защиту');
+            }
+
+            renderDurakGame();
+            return;
+        }
+    }
+
+    // Если не может или не хочет защищаться, берет карты
+    console.log(`Бот берет карты (риск: ${riskScore})`);
+    takeDurakCardsBot();
+}
+
+function makeDurakBotThrow() {
+    if (window.currentOpponent?.type !== 'bot') return;
+
+    // Бот может подкидывать только если он НЕ защищается
+    // Если currentAttacker === 'player', то бот защищается и НЕ может подкидывать
+    if (window.gameState.currentAttacker === 'player') {
+        console.log('Бот не может подкидывать - он защищается');
+        return;
+    }
+
+    console.log('Бот пытается подкинуть карты (бот атакует)');
+    console.log('Состояние стола:', {
+        attackingCards: window.gameState.attackingCards,
+        defendingCards: window.gameState.defendingCards,
+        botHand: window.gameState.opponentHand
+    });
+
+    const analyzer = window.durakAnalyzer;
+    const analysis = analyzer.analyzeGameState();
+
+    // Получаем карты для подкидывания
+    const throwableCards = analyzer.getThrowableCards();
+    console.log('Карты для подкидывания:', throwableCards);
+
+    // Бот подкидывает с умной логикой
+    if (throwableCards.length > 0) {
+        const playerHandSize = window.gameState.playerHand.length;
+        const botHandSize = window.gameState.opponentHand.length;
+
+        // Подкидываем чаще если у игрока мало карт
+        const throwProbability = playerHandSize <= 3 ? 0.9 :
+            playerHandSize <= 5 ? 0.7 : 0.4; // Уменьшили вероятность
+
+        console.log('Вероятность подкидывания:', throwProbability);
+
+        if (Math.random() < throwProbability) {
+            // Выбираем самую слабую подходящую карту
+            const cardToThrow = throwableCards.reduce((weakest, card) =>
+                card.power < weakest.power ? card : weakest
+            );
+
+            const cardIndex = window.gameState.opponentHand.indexOf(cardToThrow);
+            if (cardIndex !== -1) {
+                window.gameState.attackingCards.push(cardToThrow);
+                window.gameState.opponentHand.splice(cardIndex, 1);
+                window.gameState.gamePhase = 'defend';
+
+                console.log(`Бот подкидывает карту: ${cardToThrow.value}${cardToThrow.suit}`);
+                renderDurakGame();
+                return;
+            }
+        } else {
+            console.log('Бот решил не подкидывать карты (вероятность)');
+        }
+    } else {
+        console.log('У бота нет карт для подкидывания - пасует');
+    }
+
+    // Если не подкидывает, ждем действий игрока
+    console.log('Бот не подкидывает карты - ждет действий игрока');
+
+    // НЕ делаем автоматический отбой - игрок должен нажать "Пас"
+    // Просто перерисовываем игру, чтобы показать кнопку "Пас (отбой)"
+    renderDurakGame();
+}
+
+// ===== СИСТЕМА АНАЛИЗА ДУРАКА ДЛЯ БОТА =====
+
+class DurakBotAnalyzer {
+    constructor() {
+        this.trumpSuit = null;
+        this.gameState = null;
+    }
+
+    // Анализ текущего состояния игры
+    analyzeGameState() {
+        this.trumpSuit = window.gameState.trumpSuit;
+        this.gameState = window.gameState;
+
+        return {
+            tableCards: this.getTableCards(),
+            undefendedCards: this.getUndefendedCards(),
+            botHand: this.analyzeBotHand(),
+            gamePhase: this.gameState.gamePhase,
+            currentAttacker: this.gameState.currentAttacker,
+            canThrow: this.canThrowCards(),
+            trumpsOnTable: this.getTrumpsOnTable()
+        };
+    }
+
+    // Получить все карты на столе
+    getTableCards() {
+        return [
+            ...this.gameState.attackingCards,
+            ...this.gameState.defendingCards
+        ];
+    }
+
+    // Получить неотбитые карты
+    getUndefendedCards() {
+        return this.gameState.attackingCards.filter((_, index) =>
+            !this.gameState.defendingCards[index]
+        );
+    }
+
+    // Анализ карт бота
+    analyzeBotHand() {
+        const hand = this.gameState.opponentHand;
+
+        return {
+            cards: hand,
+            trumps: hand.filter(card => card.suit === this.trumpSuit),
+            nonTrumps: hand.filter(card => card.suit !== this.trumpSuit),
+            lowCards: hand.filter(card => card.power <= 8),
+            highCards: hand.filter(card => card.power >= 12),
+            cardsByValue: this.groupCardsByValue(hand)
+        };
+    }
+
+    // Группировка карт по достоинству
+    groupCardsByValue(cards) {
+        const groups = {};
+        cards.forEach(card => {
+            if (!groups[card.value]) {
+                groups[card.value] = [];
+            }
+            groups[card.value].push(card);
+        });
+        return groups;
+    }
+
+    // Проверка возможности подкидывания
+    canThrowCards() {
+        const tableCards = this.getTableCards();
+        if (tableCards.length === 0) return false;
+
+        const botHand = this.gameState.opponentHand;
+        return botHand.some(card =>
+            tableCards.some(tableCard => tableCard.value === card.value)
+        );
+    }
+
+    // Получить козыри на столе
+    getTrumpsOnTable() {
+        return this.getTableCards().filter(card => card.suit === this.trumpSuit);
+    }
+
+    // Найти лучшую карту для атаки
+    getBestAttackCard() {
+        const analysis = this.analyzeBotHand();
+
+        // Приоритет: слабые некозырные карты
+        if (analysis.nonTrumps.length > 0) {
+            const weakNonTrumps = analysis.nonTrumps.filter(card => card.power <= 10);
+            if (weakNonTrumps.length > 0) {
+                return weakNonTrumps.reduce((weakest, card) =>
+                    card.power < weakest.power ? card : weakest
+                );
+            }
+            return analysis.nonTrumps.reduce((weakest, card) =>
+                card.power < weakest.power ? card : weakest
+            );
+        }
+
+        // Если только козыри, берем самый слабый
+        if (analysis.trumps.length > 0) {
+            return analysis.trumps.reduce((weakest, card) =>
+                card.power < weakest.power ? card : weakest
+            );
+        }
+
+        return null;
+    }
+
+    // Найти лучшую карту для защиты
+    getBestDefenseCard(attackCard) {
+        const botHand = this.gameState.opponentHand;
+        const possibleDefenses = botHand.filter(card =>
+            this.canDefend(card, attackCard)
+        );
+
+        if (possibleDefenses.length === 0) return null;
+
+        // Приоритет защиты:
+        // 1. Некозырная карта той же масти (минимальная)
+        // 2. Слабый козырь (если атака не козырем)
+        // 3. Сильный козырь (если атака козырем)
+
+        const sameSuitDefenses = possibleDefenses.filter(card =>
+            card.suit === attackCard.suit && card.suit !== this.trumpSuit
+        );
+
+        if (sameSuitDefenses.length > 0) {
+            return sameSuitDefenses.reduce((weakest, card) =>
+                card.power < weakest.power ? card : weakest
+            );
+        }
+
+        const trumpDefenses = possibleDefenses.filter(card =>
+            card.suit === this.trumpSuit
+        );
+
+        if (trumpDefenses.length > 0) {
+            return trumpDefenses.reduce((weakest, card) =>
+                card.power < weakest.power ? card : weakest
+            );
+        }
+
+        return possibleDefenses.reduce((weakest, card) =>
+            card.power < weakest.power ? card : weakest
+        );
+    }
+
+    // Проверка возможности защиты
+    canDefend(defenseCard, attackCard) {
+        // Карта той же масти и больше по силе
+        if (defenseCard.suit === attackCard.suit && defenseCard.power > attackCard.power) {
+            return true;
+        }
+
+        // Козырь бьет некозырь
+        if (defenseCard.suit === this.trumpSuit && attackCard.suit !== this.trumpSuit) {
+            return true;
+        }
+
+        // Козырь бьет козырь только если больше
+        if (defenseCard.suit === this.trumpSuit &&
+            attackCard.suit === this.trumpSuit &&
+            defenseCard.power > attackCard.power) {
+            return true;
+        }
+
+        return false;
+    }
+
+    // Найти карты для подкидывания
+    getThrowableCards() {
+        const tableCards = this.getTableCards();
+        const botHand = this.gameState.opponentHand;
+
+        return botHand.filter(card =>
+            tableCards.some(tableCard => tableCard.value === card.value)
+        );
+    }
+
+    // Оценка риска взятия карт
+    evaluateRisk() {
+        const undefended = this.getUndefendedCards();
+        const analysis = this.analyzeBotHand();
+
+        let riskScore = 0;
+
+        // Риск увеличивается с количеством неотбитых карт
+        riskScore += undefended.length * 2;
+
+        // Риск увеличивается если много козырей на столе
+        riskScore += this.getTrumpsOnTable().length * 3;
+
+        // Риск уменьшается если у бота много карт
+        riskScore -= Math.max(0, analysis.cards.length - 8);
+
+        return riskScore;
+    }
+}
+
+// Создаем глобальный экземпляр анализатора
+window.durakAnalyzer = new DurakBotAnalyzer();
+
+// ===== УЛУЧШЕННЫЕ ФУНКЦИИ БОТА =====
+
+function makeDurakBotAttack() {
+    if (window.currentOpponent?.type !== 'bot') return;
+
+    const analyzer = window.durakAnalyzer;
+    const analysis = analyzer.analyzeGameState();
+
+    // Используем умный анализ для выбора карты
+    const bestCard = analyzer.getBestAttackCard();
+
+    if (bestCard) {
+        const cardIndex = window.gameState.opponentHand.indexOf(bestCard);
+        if (cardIndex !== -1) {
+            window.gameState.attackingCards.push(bestCard);
+            window.gameState.opponentHand.splice(cardIndex, 1);
+            window.gameState.gamePhase = 'defend';
+            window.gameState.currentAttacker = 'bot';
+
+            console.log(`Бот атакует картой: ${bestCard.value}${bestCard.suit}`);
+            renderDurakGame();
+        }
+    }
+}
+
+function refillDurakHands() {
+    // Добираем карты до 6 (или сколько есть в колоде)
+    // Сначала добирает атакующий, потом защищающийся
+    const attackerFirst = window.gameState.currentAttacker === 'player';
+
+    if (attackerFirst) {
+        // Игрок добирает первым
+        while (window.gameState.playerHand.length < 6 && window.gameState.deck.length > 0) {
+            window.gameState.playerHand.push(window.gameState.deck.pop());
+        }
+        while (window.gameState.opponentHand.length < 6 && window.gameState.deck.length > 0) {
+            window.gameState.opponentHand.push(window.gameState.deck.pop());
+        }
+    } else {
+        // Бот добирает первым
+        while (window.gameState.opponentHand.length < 6 && window.gameState.deck.length > 0) {
+            window.gameState.opponentHand.push(window.gameState.deck.pop());
+        }
+        while (window.gameState.playerHand.length < 6 && window.gameState.deck.length > 0) {
+            window.gameState.playerHand.push(window.gameState.deck.pop());
+        }
+    }
+
+    // Проверяем условия окончания игры
+    checkDurakGameEnd();
+}
+
+function checkDurakGameEnd() {
+    const playerHasCards = window.gameState.playerHand.length > 0;
+    const botHasCards = window.gameState.opponentHand.length > 0;
+    const deckHasCards = window.gameState.deck.length > 0;
+
+    // Игра заканчивается когда у одного из игроков нет карт и колода пуста
+    if (!deckHasCards) {
+        if (!playerHasCards && botHasCards) {
+            setTimeout(() => {
+                alert('🎉 Поздравляем! Вы выиграли!');
+                newDurakRound();
+            }, 500);
+        } else if (!botHasCards && playerHasCards) {
+            setTimeout(() => {
+                alert('😔 Вы проиграли! Противник выиграл.');
+                newDurakRound();
+            }, 500);
+        } else if (!playerHasCards && !botHasCards) {
+            setTimeout(() => {
+                alert('🤝 Ничья! У обоих игроков закончились карты.');
+                newDurakRound();
+            }, 500);
+        }
+    }
+}
+
+// Валидация действий бота
+function validateBotAction(action, card, targetCard = null) {
+    const analyzer = window.durakAnalyzer;
+
+    switch (action) {
+        case 'attack':
+            // Проверяем, может ли бот атаковать этой картой
+            if (window.gameState.attackingCards.length === 0) {
+                return true; // Первая атака - любой картой
+            }
+            // Подкидывание - только карты того же достоинства
+            const tableCards = [...window.gameState.attackingCards, ...window.gameState.defendingCards];
+            return tableCards.some(tableCard => tableCard.value === card.value);
+
+        case 'defend':
+            // Проверяем, может ли бот защититься этой картой
+            if (!targetCard) return false;
+            return analyzer.canDefend(card, targetCard);
+
+        case 'throw':
+            // Проверяем, может ли бот подкинуть эту карту
+            const allTableCards = [...window.gameState.attackingCards, ...window.gameState.defendingCards];
+            return allTableCards.some(tableCard => tableCard.value === card.value);
+
+        default:
+            return false;
+    }
+}
+
+function takeDurakCardsBot() {
+    // Бот берет все карты со стола
+    window.gameState.attackingCards.forEach(card => {
+        window.gameState.opponentHand.push(card);
+    });
+    window.gameState.defendingCards.forEach(card => {
+        window.gameState.opponentHand.push(card);
+    });
+
+    window.gameState.attackingCards = [];
+    window.gameState.defendingCards = [];
+    window.gameState.gamePhase = 'attack';
+    window.gameState.currentAttacker = 'player'; // Игрок атакует, так как бот взял карты
+
+    renderDurakGame();
+}
+
+function canDefendCard(defendCard, attackCard) {
+    // Можно бить картой той же масти, но большего достоинства
+    if (defendCard.suit === attackCard.suit && defendCard.power > attackCard.power) {
+        return true;
+    }
+
+    // Можно бить козырем, если атакующая карта не козырь
+    if (defendCard.suit === window.gameState.trumpSuit && attackCard.suit !== window.gameState.trumpSuit) {
+        return true;
+    }
+
+    // Козырь можно бить только более старшим козырем
+    if (defendCard.suit === window.gameState.trumpSuit &&
+        attackCard.suit === window.gameState.trumpSuit &&
+        defendCard.power > attackCard.power) {
+        return true;
+    }
+
+    return false;
+}
+
+function playDurakCard(cardIndex) {
+    const card = window.gameState.playerHand[cardIndex];
+    console.log('Играем картой:', card, 'Фаза:', window.gameState.gamePhase, 'Атакующий:', window.gameState.currentAttacker);
+
+    if (!card) {
+        console.error('Карта не найдена по индексу:', cardIndex);
+        return;
+    }
+
+    if (window.gameState.gamePhase === 'attack' && window.gameState.currentAttacker === 'player') {
+        // Игрок атакует
+        if (window.gameState.attackingCards.length === 0) {
+            // Первая атака - любой картой
+            window.gameState.attackingCards.push(card);
+            window.gameState.playerHand.splice(cardIndex, 1);
+            window.gameState.gamePhase = 'defend';
+            // currentAttacker остается 'player' - он атакует, бот защищается
+            console.log('Первая атака картой:', card);
+
+            renderDurakGame();
+
+            // Бот пытается защититься
+            if (window.currentOpponent?.type === 'bot') {
+                setTimeout(() => {
+                    makeDurakBotDefense();
+                }, 1000);
+            }
+        } else {
+            // Подкидывание - только карты того же достоинства что уже на столе
+            if (canAttackOrThrowCard(card)) {
+                window.gameState.attackingCards.push(card);
+                window.gameState.playerHand.splice(cardIndex, 1);
+                console.log('Подкидываем карту:', card);
+
+                renderDurakGame();
+
+                // Бот пытается защититься от новой карты
+                if (window.currentOpponent?.type === 'bot') {
+                    setTimeout(() => {
+                        makeDurakBotDefense();
+                    }, 1000);
+                }
+            } else {
+                alert('Нельзя подкинуть эту карту! Можно подкидывать только карты того же достоинства, что уже лежат на столе.');
+            }
+        }
+    } else if (window.gameState.gamePhase === 'defend' && window.gameState.currentAttacker === 'bot') {
+        // Игрок защищается от атаки бота
+        const undefendedCards = window.gameState.attackingCards.filter((_, index) => !window.gameState.defendingCards[index]);
+
+        if (undefendedCards.length === 0) {
+            alert('Все карты уже отбиты!');
+            return;
+        }
+
+        // Ищем первую неотбитую карту, которую можно отбить этой картой
+        let defendedIndex = -1;
+        for (let i = 0; i < window.gameState.attackingCards.length; i++) {
+            if (!window.gameState.defendingCards[i]) {
+                const attackCard = window.gameState.attackingCards[i];
+                if (canDefendCard(card, attackCard)) {
+                    defendedIndex = i;
+                    break;
+                }
+            }
+        }
+
+        if (defendedIndex !== -1) {
+            // Отбиваемся
+            window.gameState.defendingCards[defendedIndex] = card;
+            window.gameState.playerHand.splice(cardIndex, 1);
+            console.log('Отбиваемся картой:', card, 'от карты:', window.gameState.attackingCards[defendedIndex]);
+
+            renderDurakGame();
+
+            // Проверяем, все ли карты отбиты
+            const allDefended = window.gameState.attackingCards.every((_, index) => window.gameState.defendingCards[index]);
+
+            if (allDefended) {
+                // Все карты отбиты, теперь бот может подкинуть или игрок может пасовать
+                console.log('Все карты отбиты, бот может подкинуть, игрок может пасовать');
+                if (window.currentOpponent?.type === 'bot') {
+                    setTimeout(() => {
+                        makeDurakBotThrow();
+                    }, 1000);
+                }
+            } else {
+                // Есть еще неотбитые карты, бот должен защищаться
+                if (window.currentOpponent?.type === 'bot') {
+                    setTimeout(() => {
+                        makeDurakBotDefense();
+                    }, 1000);
+                }
+            }
+        } else {
+            alert('Этой картой нельзя отбиться от атакующих карт!');
+        }
+    } else if (window.gameState.gamePhase === 'defend' && window.gameState.currentAttacker === 'player') {
+        // Бот отбился от игрока, игрок может подкинуть карты
+        console.log('Попытка подкинуть карту после отбоя бота');
+        console.log('Все карты отбиты?', window.gameState.attackingCards.every((_, index) => window.gameState.defendingCards[index]));
+        console.log('Можно подкинуть эту карту?', canAttackOrThrowCard(card));
+
+        if (canAttackOrThrowCard(card)) {
+            window.gameState.attackingCards.push(card);
+            window.gameState.playerHand.splice(cardIndex, 1);
+            console.log('Игрок подкидывает карту после отбоя бота:', card);
+
+            renderDurakGame();
+
+            // Бот должен защититься от подкинутой карты
+            if (window.currentOpponent?.type === 'bot') {
+                setTimeout(() => {
+                    makeDurakBotDefense();
+                }, 1000);
+            }
+        } else {
+            alert('Нельзя подкинуть эту карту! Можно подкидывать только карты того же достоинства, что уже лежат на столе.');
+        }
+    } else if (window.gameState.gamePhase === 'attack' && window.gameState.currentAttacker === 'bot') {
+        // Бот атаковал, игрок может подкинуть если все карты отбиты
+        const allDefended = window.gameState.attackingCards.every((_, index) => window.gameState.defendingCards[index]);
+
+        if (allDefended && canAttackOrThrowCard(card)) {
+            window.gameState.attackingCards.push(card);
+            window.gameState.playerHand.splice(cardIndex, 1);
+            window.gameState.gamePhase = 'defend';
+            console.log('Игрок подкидывает карту после отбоя:', card);
+
+            renderDurakGame();
+
+            // Бот пытается защититься от подкинутой карты
+            if (window.currentOpponent?.type === 'bot') {
+                setTimeout(() => {
+                    makeDurakBotDefense();
+                }, 1000);
+            }
+        } else if (!allDefended) {
+            alert('Сначала нужно отбить все атакующие карты!');
+        } else {
+            alert('Нельзя подкинуть эту карту! Можно подкидывать только карты того же достоинства, что уже лежат на столе.');
+        }
+    } else {
+        console.log('Сейчас не ваш ход или неподходящая фаза игры');
+    }
+}
+
+function canAttackOrThrowCard(card) {
+    if (window.gameState.attackingCards.length === 0) return true;
+
+    // Можно атаковать картой того же достоинства, что уже есть на столе
+    const tableValues = [...window.gameState.attackingCards, ...window.gameState.defendingCards]
+        .map(c => c.value);
+    return tableValues.includes(card.value);
+}
+
+function canDefendWith(defendCard, attackCard) {
+    // Можно бить старшей картой той же масти или козырем
+    if (defendCard.suit === attackCard.suit) {
+        return defendCard.power > attackCard.power;
+    }
+
+    // Козырем можно бить любую некозырную карту
+    if (defendCard.suit === window.gameState.trumpSuit && attackCard.suit !== window.gameState.trumpSuit) {
+        return true;
+    }
+
+    // Козырем можно бить меньший козырь
+    if (defendCard.suit === window.gameState.trumpSuit && attackCard.suit === window.gameState.trumpSuit) {
+        return defendCard.power > attackCard.power;
+    }
+
+    return false;
+}
+
+function defendWithAI() {
+    const lastAttackCard = window.gameState.attackingCards[window.gameState.attackingCards.length - 1];
+    const defendingCard = window.gameState.opponentHand.find(card => canDefendWith(card, lastAttackCard));
+
+    if (defendingCard) {
+        const index = window.gameState.opponentHand.indexOf(defendingCard);
+        window.gameState.defendingCards.push(defendingCard);
+        window.gameState.opponentHand.splice(index, 1);
+        window.gameState.gamePhase = 'attack';
+
+        if (window.gameState.attackingCards.length === window.gameState.defendingCards.length) {
+            endDurakRound();
+        }
+    } else {
+        // ИИ берёт карты
+        window.gameState.opponentHand.push(...window.gameState.attackingCards);
+        window.gameState.attackingCards = [];
+        window.gameState.defendingCards = [];
+        window.gameState.gamePhase = 'attack';
+        drawDurakCards();
+    }
+
+    renderDurakGame();
+}
+
+function takeDurakCards() {
+    console.log('Игрок берет карты со стола');
+    console.log('Карты на столе перед взятием:', {
+        attackingCards: window.gameState.attackingCards,
+        defendingCards: window.gameState.defendingCards
+    });
+    console.log('Количество карт у игрока до взятия:', window.gameState.playerHand.length);
+
+    if (window.socket && window.roomId && window.currentOpponent?.type === 'player') {
+        // Сетевая игра - отправляем действие на сервер
+        window.socket.emit('game-move', {
+            roomId: window.roomId,
+            gameType: 'durak',
+            move: {
+                action: 'take',
+                playerId: window.socket.id
+            }
+        });
+    }
+
+    // Игрок берёт все карты со стола
+    window.gameState.playerHand.push(...window.gameState.attackingCards);
+    window.gameState.playerHand.push(...window.gameState.defendingCards);
+    window.gameState.attackingCards = [];
+    window.gameState.defendingCards = [];
+
+    console.log('Карты взяты игроком, количество карт у игрока:', window.gameState.playerHand.length);
+
+    // Тот кто атаковал, продолжает атаковать (по правилам дурака)
+    // Если игрок взял карты, то атакующий остается тем же
+    window.gameState.gamePhase = 'attack';
+
+    // Добираем карты
+    refillDurakHands();
+
+    renderDurakGame();
+
+    // Если атакует бот, делаем его ход
+    if (window.gameState.currentAttacker === 'bot' && window.currentOpponent?.type === 'bot') {
+        setTimeout(() => {
+            makeDurakBotAttack();
+        }, 1000);
+    }
+}
+
+function passDurakTurn() {
+    console.log('Пас в дураке');
+    console.log('Текущая фаза:', window.gameState.gamePhase, 'Атакующий:', window.gameState.currentAttacker);
+    console.log('Карты на столе:', {
+        attackingCards: window.gameState.attackingCards,
+        defendingCards: window.gameState.defendingCards
+    });
+
+    if (window.socket && window.roomId && window.currentOpponent?.type === 'player') {
+        // Сетевая игра - отправляем действие на сервер
+        window.socket.emit('game-move', {
+            roomId: window.roomId,
+            gameType: 'durak',
+            move: {
+                action: 'pass',
+                playerId: window.socket.id
+            }
+        });
+    }
+
+    if (window.gameState.gamePhase === 'attack' && window.gameState.currentAttacker === 'player') {
+        // Игрок атакует и пасует - завершаем раунд (отбой)
+        console.log('Игрок пасует при атаке - отбой');
+        finishDurakRound();
+    } else if (window.gameState.gamePhase === 'defend' && window.gameState.currentAttacker === 'player') {
+        // Игрок атаковал, бот отбился, игрок пасует (не подкидывает) - отбой
+        console.log('Игрок пасует после отбоя бота - отбой');
+        finishDurakRound();
+    } else if (window.gameState.gamePhase === 'defend' && window.gameState.currentAttacker === 'bot') {
+        // Бот атаковал, игрок отбился, теперь игрок пасует для отбоя
+        console.log('Игрок пасует после отбоя - отбой');
+        finishDurakRound();
+    } else {
+        console.log('Неопределенная ситуация для паса - возможно нужно взять карты?');
+        // Если ситуация неясная, проверяем нужно ли взять карты
+        if (window.gameState.gamePhase === 'defend' && window.gameState.currentAttacker === 'bot') {
+            console.log('Бот атакует, игрок пасует - берем карты');
+            takeDurakCards();
+        } else {
+            console.log('Другая ситуация - просто перерисовываем');
+            renderDurakGame();
+        }
+    }
+}
+
+function finishDurakRound() {
+    console.log('Завершение раунда дурака (отбой)');
+    console.log('Карты на столе перед отбоем:', {
+        attackingCards: window.gameState.attackingCards,
+        defendingCards: window.gameState.defendingCards
+    });
+
+    // Убираем карты со стола (они уходят в отбой)
+    window.gameState.attackingCards = [];
+    window.gameState.defendingCards = [];
+
+    console.log('Карты очищены со стола');
+    console.log('Количество карт у игрока:', window.gameState.playerHand.length);
+    console.log('Количество карт у бота:', window.gameState.opponentHand.length);
+
+    // Переключаем атакующего - тот кто успешно отбился, теперь атакует
+    if (window.gameState.currentAttacker === 'bot') {
+        window.gameState.currentAttacker = 'player';
+    } else {
+        window.gameState.currentAttacker = 'bot';
+    }
+
+    window.gameState.gamePhase = 'attack';
+
+    // Добираем карты
+    refillDurakHands();
+
+    // Перерисовываем игру
+    renderDurakGame();
+
+    // Если теперь атакует бот, делаем его ход
+    if (window.gameState.currentAttacker === 'bot' && window.currentOpponent?.type === 'bot') {
+        setTimeout(() => {
+            makeDurakBotAttack();
+        }, 1000);
+    }
+}
+
+function endDurakRound() {
+    // Все карты со стола убираются из игры
+    window.gameState.attackingCards = [];
+    window.gameState.defendingCards = [];
+    window.gameState.gamePhase = 'attack';
+
+    drawDurakCards();
+
+    // Проверяем победу
+    if (window.gameState.playerHand.length === 0) {
+        alert('Вы выиграли!');
+        newDurakRound();
+    } else if (window.gameState.opponentHand.length === 0) {
+        alert('Противник выиграл!');
+        newDurakRound();
+    }
+}
+
+function drawDurakCards() {
+    // Добираем карты до 6 (или сколько есть в колоде)
+    while (window.gameState.playerHand.length < 6 && window.gameState.deck.length > 0) {
+        window.gameState.playerHand.push(window.gameState.deck.pop());
+    }
+    while (window.gameState.opponentHand.length < 6 && window.gameState.deck.length > 0) {
+        window.gameState.opponentHand.push(window.gameState.deck.pop());
+    }
+}
+
+function newDurakRound() {
+    window.gameState.gameMode = 'durak';
+    createDeck();
+    shuffleDeck();
+    setTrumpSuit();
+    dealDurakCards();
+    window.gameState.attackingCards = [];
+    window.gameState.defendingCards = [];
+    window.gameState.gamePhase = 'attack';
+    renderDurakGame();
+}
+
+function backToMenu() {
+    window.gameState.gameMode = 'menu';
+    // Закрываем панель активной игры и возвращаемся в главное меню
+    closeGame();
+}
+
+function handleCardClick(e) {
+    if (window.gameState.currentPlayer !== 'player') return;
+
+    const cardIndex = parseInt(e.target.dataset.index);
+    const card = window.gameState.playerHand[cardIndex];
+
+    // Отправляем ход на сервер
+    window.socket.emit('game_event', {
+        game: 'cards',
+        data: {
+            action: 'play',
+            card,
+            roomId: window.roomId
+        }
+    });
+
+    // Обновляем локальное состояние
+    window.gameState.tableCards.push(card);
+    window.gameState.playerHand.splice(cardIndex, 1);
+    window.gameState.currentPlayer = 'opponent';
+
+    // Рендерим в зависимости от режима игры
+    if (window.gameState.gameMode === 'poker') {
+        renderPokerGame();
+    } else if (window.gameState.gameMode === 'durak') {
+        renderDurakGame();
+    } else {
+        renderCardsMenu();
+    }
+
+    // Имитируем ход оппонента (в реальной игре это будет приходить от сервера)
+    setTimeout(() => {
+        if (window.gameState.opponentHand.length > 0) {
+            const opponentCardIndex = Math.floor(Math.random() * window.gameState.opponentHand.length);
+            const opponentCard = window.gameState.opponentHand[opponentCardIndex];
+
+            window.gameState.tableCards.push(opponentCard);
+            window.gameState.opponentHand.splice(opponentCardIndex, 1);
+            window.gameState.currentPlayer = 'player';
+
+            // Рендерим в зависимости от режима игры
+            if (window.gameState.gameMode === 'poker') {
+                renderPokerGame();
+            } else if (window.gameState.gameMode === 'durak') {
+                renderDurakGame();
+            } else {
+                renderCardsMenu();
+            }
+        }
+    }, 1000);
+}
+
+// Резервные функции для инициализации игр, если модули не загрузились
+function initSimpleChess() {
+    console.log('Initializing simple chess game');
+
+    // Устанавливаем соперника, если его нет
+    if (!window.currentOpponent) {
+        window.currentOpponent = { type: 'bot', name: 'Бот', emoji: '🤖' };
+    }
+
+    // Показываем панель игры
+    const panel = document.getElementById('activeGamePanel');
+    if (panel) {
+        document.getElementById('activeGameTitle').textContent = 'Шахматы';
+        document.getElementById('activeGameIcon').textContent = '♟️';
+        panel.classList.remove('hidden');
+        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    const container = document.getElementById('activeGameContent');
+    if (container) {
+        // Создаем шахматную доску
+        let html = '<div class="chess-status">Ваш ход (белые фигуры)</div>';
+        html += '<div class="chess-board">';
+
+        const board = createInitialChessBoard();
+        for (let row = 0; row < 8; row++) {
+            for (let col = 0; col < 8; col++) {
+                const isLight = (row + col) % 2 === 0;
+                const cellClass = isLight ? 'light' : 'dark';
+                const piece = board[row][col] || '';
+                html += `<div class="chess-cell ${cellClass}" data-row="${row}" data-col="${col}">${piece}</div>`;
+            }
+        }
+        html += '</div>';
+        html += '<div class="game-controls"><button onclick="closeGame()">Закрыть</button></div>';
+
+        container.innerHTML = html;
+        container.style.display = 'block';
+
+        // Инициализируем шахматное состояние
+        window.gameState = {
+            board: board,
+            currentPlayer: 'white',
+            selectedSquare: null,
+            gameOver: false,
+            moveCount: 0
+        };
+
+        // Добавляем обработчики кликов
+        container.querySelectorAll('.chess-cell').forEach(cell => {
+            cell.addEventListener('click', () => {
+                const row = parseInt(cell.dataset.row);
+                const col = parseInt(cell.dataset.col);
+                handleSimpleChessClick(row, col);
+            });
+        });
+    }
+}
+
+function initSimpleTicTacToe() {
+    console.log('Initializing simple tic-tac-toe game');
+
+    // Устанавливаем соперника, если его нет
+    if (!window.currentOpponent) {
+        window.currentOpponent = { type: 'bot', name: 'Бот', emoji: '🤖' };
+    }
+
+    // Показываем панель игры
+    const panel = document.getElementById('activeGamePanel');
+    if (panel) {
+        document.getElementById('activeGameTitle').textContent = 'Крестики-нолики';
+        document.getElementById('activeGameIcon').textContent = '⭕';
+        panel.classList.remove('hidden');
+        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    const container = document.getElementById('activeGameContent');
+    if (container) {
+        // Создаем игровое поле
+        let html = '<div class="tic-tac-toe-container">';
+        html += '<h3>⭕ Крестики-нолики</h3>';
+        html += '<div class="tic-tac-toe-status">Ваш ход</div>';
+        html += '<div class="tic-tac-toe-board">';
+
+        for (let row = 0; row < 3; row++) {
+            for (let col = 0; col < 3; col++) {
+                html += `<div class="cell" data-row="${row}" data-col="${col}" onclick="window.handleSimpleTicTacToeClick(${row}, ${col})"></div>`;
+            }
+        }
+
+        html += '</div>';
+        html += '<div class="game-controls"><button onclick="closeGame()">Закрыть</button></div>';
+        html += '</div>';
+
+        container.innerHTML = html;
+        container.style.display = 'block';
+
+        // Инициализируем состояние игры
+        window.gameState = {
+            board: Array(3).fill().map(() => Array(3).fill('')),
+            currentPlayer: 'X',
+            gameOver: false,
+            winner: null
+        };
+    }
+}
+
+// Функция для обработки кликов по шахматной доске
+window.handleSimpleChessClick = function(row, col) {
+    if (window.gameState.gameOver) return;
+
+    const piece = window.gameState.board[row][col];
+
+    // Если клетка уже выбрана, снимаем выделение
+    if (window.gameState.selectedSquare &&
+        window.gameState.selectedSquare.row === row &&
+        window.gameState.selectedSquare.col === col) {
+        window.gameState.selectedSquare = null;
+        updateSimpleChessBoard();
+        return;
+    }
+
+    // Если выбрана фигура игрока, выделяем её
+    if (piece && isPlayerPiece(piece, window.gameState.currentPlayer)) {
+        window.gameState.selectedSquare = { row, col };
+        updateSimpleChessBoard();
+        return;
+    }
+
+    // Если есть выбранная фигура, пытаемся сделать ход
+    if (window.gameState.selectedSquare) {
+        const fromRow = window.gameState.selectedSquare.row;
+        const fromCol = window.gameState.selectedSquare.col;
+        const fromPiece = window.gameState.board[fromRow][fromCol];
+
+        if (isValidSimpleMove(fromPiece, fromRow, fromCol, row, col)) {
+            // Делаем ход
+            window.gameState.board[row][col] = fromPiece;
+            window.gameState.board[fromRow][fromCol] = '';
+            window.gameState.selectedSquare = null;
+            window.gameState.currentPlayer = window.gameState.currentPlayer === 'white' ? 'black' : 'white';
+            window.gameState.moveCount++;
+
+            updateSimpleChessBoard();
+            updateSimpleChessStatus();
+
+            // Ход бота
+            if (window.currentOpponent?.type === 'bot' && window.gameState.currentPlayer === 'black' && !window.gameState.gameOver) {
+                setTimeout(() => {
+                    makeSimpleChessBotMove();
+                }, 1000);
+            }
+        }
+    }
+};
+
+// Проверка, является ли фигура фигурой игрока
+function isPlayerPiece(piece, player) {
+    const whitePieces = ['♔', '♕', '♖', '♗', '♘', '♙'];
+    const blackPieces = ['♚', '♛', '♜', '♝', '♞', '♟️'];
+
+    if (player === 'white') {
+        return whitePieces.includes(piece);
+    } else {
+        return blackPieces.includes(piece);
+    }
+}
+
+// Простая проверка допустимости хода (очень упрощенная)
+function isValidSimpleMove(piece, fromRow, fromCol, toRow, toCol) {
+    // Базовые проверки
+    if (fromRow === toRow && fromCol === toCol) return false;
+
+    const targetPiece = window.gameState.board[toRow][toCol];
+    const isCapture = targetPiece !== '';
+
+    // Проверяем, не атакуем ли свою фигуру
+    if (isCapture && isPlayerPiece(targetPiece, window.gameState.currentPlayer)) {
+        return false;
+    }
+
+    // Упрощенная логика ходов
+    const rowDiff = Math.abs(toRow - fromRow);
+    const colDiff = Math.abs(toCol - fromCol);
+
+    switch (piece) {
+        case '♙': // Белая пешка
+            if (colDiff === 0 && !isCapture) {
+                return (toRow === fromRow - 1) || (fromRow === 6 && toRow === 4);
+            }
+            if (colDiff === 1 && isCapture && toRow === fromRow - 1) {
+                return true;
+            }
+            break;
+
+        case '♟️': // Черная пешка
+            if (colDiff === 0 && !isCapture) {
+                return (toRow === fromRow + 1) || (fromRow === 1 && toRow === 3);
+            }
+            if (colDiff === 1 && isCapture && toRow === fromRow + 1) {
+                return true;
+            }
+            break;
+
+        case '♖': case '♜': // Ладья
+            return (rowDiff === 0 || colDiff === 0);
+
+        case '♗': case '♝': // Слон
+            return rowDiff === colDiff;
+
+        case '♘': case '♞': // Конь
+            return (rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2);
+
+        case '♕': case '♛': // Ферзь
+            return (rowDiff === 0 || colDiff === 0 || rowDiff === colDiff);
+
+        case '♔': case '♚': // Король
+            return rowDiff <= 1 && colDiff <= 1;
+    }
+
+    return false;
+}
+
+// Обновление шахматной доски
+function updateSimpleChessBoard() {
+    for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+            const cell = document.querySelector(`.chess-cell[data-row="${row}"][data-col="${col}"]`);
+            if (cell) {
+                const piece = window.gameState.board[row][col] || '';
+                cell.textContent = piece;
+
+                // Убираем все классы выделения
+                cell.classList.remove('selected', 'valid-move');
+
+                // Добавляем класс для выбранной клетки
+                if (window.gameState.selectedSquare &&
+                    window.gameState.selectedSquare.row === row &&
+                    window.gameState.selectedSquare.col === col) {
+                    cell.classList.add('selected');
+                }
+            }
+        }
+    }
+}
+
+// Обновление статуса шахмат
+function updateSimpleChessStatus() {
+    const statusEl = document.querySelector('.chess-status');
+    if (statusEl) {
+        const playerName = window.gameState.currentPlayer === 'white' ? 'Ваш ход (белые)' : 'Ход противника (черные)';
+        statusEl.textContent = playerName;
+    }
+}
+
+// Ход шахматного бота
+function makeSimpleChessBotMove() {
+    if (window.gameState.gameOver) return;
+
+    // Простая логика: выбираем случайный допустимый ход
+    const possibleMoves = [];
+
+    for (let fromRow = 0; fromRow < 8; fromRow++) {
+        for (let fromCol = 0; fromCol < 8; fromCol++) {
+            const piece = window.gameState.board[fromRow][fromCol];
+            if (piece && isPlayerPiece(piece, 'black')) {
+                for (let toRow = 0; toRow < 8; toRow++) {
+                    for (let toCol = 0; toCol < 8; toCol++) {
+                        if (isValidSimpleMove(piece, fromRow, fromCol, toRow, toCol)) {
+                            possibleMoves.push({ fromRow, fromCol, toRow, toCol });
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (possibleMoves.length > 0) {
+        const move = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+        window.gameState.board[move.toRow][move.toCol] = window.gameState.board[move.fromRow][move.fromCol];
+        window.gameState.board[move.fromRow][move.fromCol] = '';
+        window.gameState.currentPlayer = 'white';
+        window.gameState.moveCount++;
+
+        updateSimpleChessBoard();
+        updateSimpleChessStatus();
+    }
+}
+
+// Глобальная функция для обработки кликов по крестикам-ноликам
+window.handleSimpleTicTacToeClick = function(row, col) {
+    if (window.gameState.gameOver || window.gameState.board[row][col] !== '') {
+        return;
+    }
+
+    // Делаем ход
+    window.gameState.board[row][col] = window.gameState.currentPlayer;
+
+    // Проверяем победителя
+    if (checkSimpleWinner(window.gameState.currentPlayer)) {
+        window.gameState.gameOver = true;
+        window.gameState.winner = window.gameState.currentPlayer;
+        updateSimpleTicTacToeDisplay(`Игрок ${window.gameState.currentPlayer} победил!`);
+        return;
+    }
+
+    // Проверяем ничью
+    if (window.gameState.board.flat().every(cell => cell !== '')) {
+        window.gameState.gameOver = true;
+        window.gameState.winner = 'draw';
+        updateSimpleTicTacToeDisplay('Ничья!');
+        return;
+    }
+
+    // Меняем игрока
+    window.gameState.currentPlayer = window.gameState.currentPlayer === 'X' ? 'O' : 'X';
+    updateSimpleTicTacToeDisplay(window.gameState.currentPlayer === 'X' ? 'Ваш ход' : 'Ход бота');
+
+    // Ход бота
+    if (window.currentOpponent?.type === 'bot' && window.gameState.currentPlayer === 'O' && !window.gameState.gameOver) {
+        setTimeout(() => {
+            makeSimpleBotMove();
+        }, 500);
+    }
+};
+
+function updateSimpleTicTacToeDisplay(message) {
+    const statusEl = document.querySelector('.tic-tac-toe-status');
+    if (statusEl) {
+        statusEl.textContent = message;
+    }
+
+    // Обновляем отображение доски
+    for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 3; col++) {
+            const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+            if (cell) {
+                cell.textContent = window.gameState.board[row][col];
+                cell.className = `cell ${window.gameState.board[row][col].toLowerCase()}`;
+            }
+        }
+    }
+}
+
+function checkSimpleWinner(player) {
+    const board = window.gameState.board;
+
+    // Проверяем строки и столбцы
+    for (let i = 0; i < 3; i++) {
+        if ((board[i][0] === player && board[i][1] === player && board[i][2] === player) ||
+            (board[0][i] === player && board[1][i] === player && board[2][i] === player)) {
+            return true;
+        }
+    }
+
+    // Проверяем диагонали
+    if ((board[0][0] === player && board[1][1] === player && board[2][2] === player) ||
+        (board[0][2] === player && board[1][1] === player && board[2][0] === player)) {
+        return true;
+    }
+
+    return false;
+}
+
+function makeSimpleBotMove() {
+    if (window.gameState.gameOver) return;
+
+    // Улучшенная логика бота для крестиков-ноликов
+    const botSymbol = 'O';
+    const playerSymbol = 'X';
+    const board = window.gameState.board;
+
+    // Функция для оценки позиции
+    function evaluatePosition() {
+        // Проверяем, выиграл ли бот
+        if (checkWinnerForSymbol(botSymbol)) return 10;
+        // Проверяем, выиграл ли игрок
+        if (checkWinnerForSymbol(playerSymbol)) return -10;
+        // Ничья
+        return 0;
+    }
+
+    // Проверяем, выиграл ли символ
+    function checkWinnerForSymbol(symbol) {
+        // Проверяем строки, столбцы и диагонали
+        for (let i = 0; i < 3; i++) {
+            if ((board[i][0] === symbol && board[i][1] === symbol && board[i][2] === symbol) ||
+                (board[0][i] === symbol && board[1][i] === symbol && board[2][i] === symbol)) {
+                return true;
+            }
+        }
+        // Диагонали
+        if ((board[0][0] === symbol && board[1][1] === symbol && board[2][2] === symbol) ||
+            (board[0][2] === symbol && board[1][1] === symbol && board[2][0] === symbol)) {
+            return true;
+        }
+        return false;
+    }
+
+    // Минимакс алгоритм для поиска лучшего хода
+    function minimax(depth, isMaximizing, alpha = -Infinity, beta = Infinity) {
+        const score = evaluatePosition();
+
+        // Терминальные состояния
+        if (score === 10 || score === -10) return score;
+        if (board.flat().every(cell => cell !== '')) return 0; // Ничья
+
+        if (isMaximizing) {
+            // Ход бота (максимизация)
+            let maxEval = -Infinity;
+            for (let row = 0; row < 3; row++) {
+                for (let col = 0; col < 3; col++) {
+                    if (board[row][col] === '') {
+                        board[row][col] = botSymbol;
+                        const eval = minimax(depth + 1, false, alpha, beta);
+                        board[row][col] = '';
+                        maxEval = Math.max(maxEval, eval);
+                        alpha = Math.max(alpha, eval);
+                        if (beta <= alpha) break;
+                    }
+                }
+            }
+            return maxEval;
+        } else {
+            // Ход игрока (минимизация)
+            let minEval = Infinity;
+            for (let row = 0; row < 3; row++) {
+                for (let col = 0; col < 3; col++) {
+                    if (board[row][col] === '') {
+                        board[row][col] = playerSymbol;
+                        const eval = minimax(depth + 1, true, alpha, beta);
+                        board[row][col] = '';
+                        minEval = Math.min(minEval, eval);
+                        beta = Math.min(beta, eval);
+                        if (beta <= alpha) break;
+                    }
+                }
+            }
+            return minEval;
+        }
+    }
+
+    // Находим лучший ход
+    let bestMove = null;
+    let bestValue = -Infinity;
+
+    for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 3; col++) {
+            if (board[row][col] === '') {
+                board[row][col] = botSymbol;
+                const moveValue = minimax(0, false);
+                board[row][col] = '';
+
+                if (moveValue > bestValue) {
+                    bestValue = moveValue;
+                    bestMove = { row, col };
+                }
+            }
+        }
+    }
+
+    // Если нашли лучший ход, делаем его
+    if (bestMove) {
+        window.handleSimpleTicTacToeClick(bestMove.row, bestMove.col);
+    } else {
+        // Резервный вариант - случайный ход
+        const emptyCells = [];
+        for (let row = 0; row < 3; row++) {
+            for (let col = 0; col < 3; col++) {
+                if (board[row][col] === '') {
+                    emptyCells.push({ row, col });
+                }
+            }
+        }
+        if (emptyCells.length > 0) {
+            const randomMove = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+            window.handleSimpleTicTacToeClick(randomMove.row, randomMove.col);
+        }
+    }
+}
+
+// Обработчик входящего состояния игры с сервера
+if (window.socket) {
+    window.socket.on('game-closed', () => {
+        console.log('Received game-closed event');
+        closeGame();
+    });
+}
+
+function backToMenu() {
+    console.log('backToMenu called');
+
+    // Сбрасываем состояние игры
+    window.gameState = null;
+    window.currentOpponent = null;
+
+    // Возвращаемся к меню карточных игр
+    initCards();
+}
+
+// Дополнительные функции для карточных игр
+function checkPokerHand() {
+    console.log('checkPokerHand called');
+
+    if (window.socket && window.roomId && window.currentOpponent?.type === 'player') {
+        // Отправляем запрос на проверку комбинации для сетевой игры
+        window.socket.emit('game-move', {
+            roomId: window.roomId,
+            gameType: 'poker',
+            move: {
+                action: 'check',
+                playerId: window.socket.id
+            }
+        });
+
+        // Локально переходим к фазе ожидания
+        window.gameState.gamePhase = 'waiting';
+
+        // Показываем сообщение
+        const statusElement = document.querySelector('.poker-status');
+        if (statusElement) {
+            statusElement.innerHTML = '<div style="color: #ffc107;">Ожидание противника...</div>';
+        }
+
+        renderPokerGame();
+    } else {
+        // Локальная игра с ботом - сразу переходим к сравнению
+        window.gameState.gamePhase = 'waiting';
+        renderPokerGame();
+
+        // Имитируем задержку для показа карт противника
+        setTimeout(() => {
+            comparePokerHands();
+        }, 2000);
+    }
+}
+
+function comparePokerHands() {
+    console.log('comparePokerHands called');
+
+    // Простое сравнение - считаем сумму значений карт
+    const playerScore = window.gameState.playerHand.reduce((sum, card) => sum + getCardPower(card.value), 0);
+    const opponentScore = window.gameState.opponentHand.reduce((sum, card) => sum + getCardPower(card.value), 0);
+
+    console.log('Player score:', playerScore, 'Opponent score:', opponentScore);
+
+    let winner;
+    if (playerScore > opponentScore) {
+        winner = 'player';
+        window.gameState.playerScore++;
+    } else if (opponentScore > playerScore) {
+        winner = 'opponent';
+        window.gameState.opponentScore++;
+    } else {
+        winner = 'draw';
+    }
+
+    window.gameState.winner = winner;
+    window.gameState.gamePhase = 'finished';
+
+    renderPokerGame();
+
+    // Показываем результат
+    const statusElement = document.querySelector('.poker-status');
+    if (statusElement) {
+        if (winner === 'player') {
+            statusElement.innerHTML = '<div style="color: #28a745; font-size: 18px; font-weight: bold;">🎉 Вы выиграли раунд!</div>';
+        } else if (winner === 'opponent') {
+            statusElement.innerHTML = '<div style="color: #dc3545; font-size: 18px; font-weight: bold;">😞 Противник выиграл раунд!</div>';
+        } else {
+            statusElement.innerHTML = '<div style="color: #ffc107; font-size: 18px; font-weight: bold;">🤝 Ничья в раунде!</div>';
+        }
+    }
+
+    // Проверяем, закончилась ли игра
+    if (window.gameState.playerScore >= 10 || window.gameState.opponentScore >= 10) {
+        // Игра окончена
+        setTimeout(() => {
+            showNotification('Игра окончена! ' + (window.gameState.playerScore > window.gameState.opponentScore ? 'Вы победили!' : 'Противник победил!'), 'info');
+        }, 2000);
+    }
+}
+
+function newPokerRound() {
+    console.log('newPokerRound called');
+
+    // Сбрасываем состояние для нового раунда
+    window.gameState.round++;
+    window.gameState.gamePhase = 'exchange';
+    window.gameState.winner = null;
+
+    // Создаем новую колоду и раздаем карты
+    createDeck();
+    shuffleDeck();
+    dealPokerCards();
+
+    renderPokerGame();
+
+    // Показываем сообщение
+    const statusElement = document.querySelector('.poker-status');
+    if (statusElement) {
+        statusElement.innerHTML = '<div style="color: #28a745;">Раунд ' + window.gameState.round + ' начат!</div>';
+    }
+}
+
+// Функции для дурака
+function playDurakCard(cardIndex) {
+    console.log('playDurakCard called with index:', cardIndex);
+
+    if (!window.gameState || !window.gameState.playerHand || cardIndex >= window.gameState.playerHand.length) {
+        return;
+    }
+
+    const card = window.gameState.playerHand[cardIndex];
+    if (!card) return;
+
+    console.log('Playing card:', card);
+
+    if (window.socket && window.roomId && window.currentOpponent?.type === 'player') {
+        // Сетевая игра
+        let action = 'play';
+        if (window.gameState.gamePhase === 'defend' && window.gameState.currentAttacker === 'bot') {
+            action = 'defend';
+        } else if (window.gameState.gamePhase === 'attack' && window.gameState.currentAttacker === 'player') {
+            // Проверяем, все ли карты отбиты для подкидывания
+            const allDefended = window.gameState.attackingCards.every((_, index) => window.gameState.defendingCards[index]);
+            if (allDefended && window.gameState.attackingCards.length > 0) {
+                action = 'throw';
+            } else {
+                action = 'play';
+            }
+        }
+
+        window.socket.emit('game-move', {
+            roomId: window.roomId,
+            gameType: 'durak',
+            move: {
+                action: action,
+                card: { suit: card.suit, value: card.value },
+                cardIndex: cardIndex,
+                playerId: window.socket.id
+            }
+        });
+    } else {
+        // Локальная игра с ботом
+        makeDurakMove(card, cardIndex);
+    }
+}
+
+function makeDurakMove(card, cardIndex) {
+    console.log('makeDurakMove:', card, cardIndex);
+
+    if (window.gameState.gamePhase === 'attack' && window.gameState.currentAttacker === 'player') {
+        // Игрок атакует
+        if (window.gameState.attackingCards.length === 0) {
+            // Первая атака
+            window.gameState.playerHand.splice(cardIndex, 1);
+            window.gameState.attackingCards.push(card);
+            window.gameState.gamePhase = 'defend';
+            console.log('Player attacked with:', card);
+        } else {
+            // Подкидывание карт
+            window.gameState.playerHand.splice(cardIndex, 1);
+            window.gameState.attackingCards.push(card);
+            console.log('Player threw card:', card);
+        }
+    } else if (window.gameState.gamePhase === 'defend' && window.gameState.currentAttacker === 'bot') {
+        // Игрок защищается от бота
+        const undefendedIndex = window.gameState.attackingCards.findIndex((_, index) => !window.gameState.defendingCards[index]);
+        if (undefendedIndex !== -1) {
+            window.gameState.playerHand.splice(cardIndex, 1);
+            window.gameState.defendingCards[undefendedIndex] = card;
+            console.log('Player defended with:', card);
+
+            // Проверяем, все ли карты отбиты
+            const allDefended = window.gameState.attackingCards.every((_, index) => window.gameState.defendingCards[index]);
+            if (allDefended) {
+                // Все карты отбиты - очищаем стол и меняем атакующего
+                window.gameState.attackingCards = [];
+                window.gameState.defendingCards = [];
+                window.gameState.currentAttacker = 'bot'; // Теперь бот атакует
+                window.gameState.gamePhase = 'attack';
+
+                // Добираем карты
+                refillDurakHands();
+
+                // Бот атакует
+                setTimeout(() => {
+                    makeDurakBotAttack();
+                }, 1000);
+            }
+        }
+    }
+
+    renderDurakGame();
+}
+
+function takeDurakCards() {
+    console.log('takeDurakCards called');
+
+    if (window.gameState.gamePhase === 'defend' && window.gameState.currentAttacker === 'bot') {
+        // Игрок берет все карты со стола
+        window.gameState.playerHand.push(...window.gameState.attackingCards);
+        window.gameState.playerHand.push(...window.gameState.defendingCards);
+        window.gameState.attackingCards = [];
+        window.gameState.defendingCards = [];
+
+        // Меняем атакующего
+        window.gameState.currentAttacker = 'bot';
+        window.gameState.gamePhase = 'attack';
+
+        // Добираем карты
+        refillDurakHands();
+
+        // Бот атакует
+        setTimeout(() => {
+            makeDurakBotAttack();
+        }, 1000);
+
+        renderDurakGame();
+    }
+}
+
+function passDurakTurn() {
+    console.log('passDurakTurn called');
+
+    if (window.gameState.gamePhase === 'attack' && window.gameState.currentAttacker === 'player') {
+        // Игрок завершает атаку
+        if (window.gameState.attackingCards.length > 0) {
+            window.gameState.attackingCards = [];
+            window.gameState.defendingCards = [];
+            window.gameState.currentAttacker = 'bot';
+            window.gameState.gamePhase = 'attack';
+            refillDurakHands();
+
+            // Бот атакует
+            setTimeout(() => {
+                makeDurakBotAttack();
+            }, 1000);
+        }
+    } else if (window.gameState.gamePhase === 'defend' && window.gameState.currentAttacker === 'bot') {
+        // Игрок не может отбиться и берет карты
+        takeDurakCards();
+    } else if (window.gameState.gamePhase === 'defend' && window.gameState.currentAttacker === 'player') {
+        // Игрок атаковал, все карты отбиты - отбой
+        window.gameState.attackingCards = [];
+        window.gameState.defendingCards = [];
+        window.gameState.currentAttacker = 'bot';
+        window.gameState.gamePhase = 'attack';
+        refillDurakHands();
+
+        // Бот атакует
+        setTimeout(() => {
+            makeDurakBotAttack();
+        }, 1000);
+    }
+
+    renderDurakGame();
+}
+
+function refillDurakHands() {
+    console.log('refillDurakHands called');
+
+    // Добираем карты до 6 у каждого игрока
+    while (window.gameState.playerHand.length < 6 && window.gameState.deck.length > 0) {
+        window.gameState.playerHand.push(window.gameState.deck.pop());
+    }
+
+    while (window.gameState.opponentHand.length < 6 && window.gameState.deck.length > 0) {
+        window.gameState.opponentHand.push(window.gameState.deck.pop());
+    }
+}
+
+function newDurakRound() {
+    console.log('newDurakRound called');
+
+    // Начинаем новую игру дурака
+    startDurak();
+}
+
+function makeDurakBotAttack() {
+    console.log('makeDurakBotAttack called');
+
+    if (window.gameState.gamePhase !== 'attack' || window.gameState.currentAttacker !== 'bot' || window.gameState.opponentHand.length === 0) {
+        return;
+    }
+
+    // Бот выбирает случайную карту для атаки
+    const attackCard = window.gameState.opponentHand[Math.floor(Math.random() * window.gameState.opponentHand.length)];
+
+    // Удаляем карту из руки бота
+    const cardIndex = window.gameState.opponentHand.findIndex(card =>
+        card.suit === attackCard.suit && card.value === attackCard.value
+    );
+    if (cardIndex !== -1) {
+        window.gameState.opponentHand.splice(cardIndex, 1);
+    }
+
+    // Добавляем карту на стол
+    window.gameState.attackingCards.push(attackCard);
+    window.gameState.gamePhase = 'defend';
+
+    console.log('Bot attacked with:', attackCard);
+    renderDurakGame();
+
+    // Ждем немного, затем бот может продолжить атаку
+    setTimeout(() => {
+        if (window.gameState.gamePhase === 'defend' && window.gameState.currentAttacker === 'bot') {
+            // Бот может продолжить атаку, если игрок отбился
+            const allDefended = window.gameState.attackingCards.every((_, index) => window.gameState.defendingCards[index]);
+            if (allDefended && window.gameState.opponentHand.length > 0) {
+                // Бот может подкинуть карту или завершить атаку
+                if (Math.random() < 0.3) { // 30% шанс подкинуть
+                    makeDurakBotAttack();
+                }
+            }
+        }
+    }, 1500);
+}
+
+// Экспорт дополнительных функций
+window.backToMenu = backToMenu;
+window.checkPokerHand = checkPokerHand;
+window.comparePokerHands = comparePokerHands;
+window.newPokerRound = newPokerRound;
+window.playDurakCard = playDurakCard;
+window.takeDurakCards = takeDurakCards;
+window.passDurakTurn = passDurakTurn;
+window.newDurakRound = newDurakRound;
+window.makeDurakBotAttack = makeDurakBotAttack;
+
+// Экспорт функций в глобальную область для использования в onclick-обработчиках HTML
+try {
+    // Функции инициализации - используем legacy функции с резервными вариантами
+    window.initChess = function() {
+        if (window.initNetworkChess) {
+            window.initNetworkChess();
+        } else {
+            // Резервная функция, если модули не загрузились
+            console.log('Using fallback chess initialization');
+            initSimpleChess();
+        }
+    };
+
+    window.initTicTacToe = function() {
+        if (window.initNetworkTicTacToe) {
+            window.initNetworkTicTacToe();
+        } else {
+            // Резервная функция, если модули не загрузились
+            console.log('Using fallback tic-tac-toe initialization');
+            initSimpleTicTacToe();
+        }
+    };
+
+    window.startPoker = function() {
+        if (window.selectPoker) {
+            window.selectPoker();
+        } else {
+            // Резервная функция
+            startPoker();
+        }
+    };
+
+    window.startDurak = function() {
+        if (window.selectDurak) {
+            window.selectDurak();
+        } else {
+            // Резервная функция
+            startDurak();
+        }
+    };
+
+    // Основные функции для работы с играми
+    window.handleGameStateUpdate = handleGameStateUpdate;
+    window.initializeGameInvitations = initializeGameInvitations;
+    window.showOpponentSelector = showOpponentSelector;
+
+    // Функции для работы с комнатами
+    window.updateParticipantsList = updateParticipantsList;
+
+    // Функции для работы с сетевыми ходами
+    window.handleNetworkPokerMove = handleNetworkPokerMove;
+    window.handleNetworkCardsMove = handleNetworkCardsMove;
+    window.handleCardClick = handleCardClick;
+
+    // Резервные функции
+    window.initSimpleChess = initSimpleChess;
+    window.initSimpleTicTacToe = initSimpleTicTacToe;
+    window.handleSimpleTicTacToeClick = window.handleSimpleTicTacToeClick;
+    window.handleSimpleChessClick = window.handleSimpleChessClick;
+    window.updateSimpleChessBoard = updateSimpleChessBoard;
+
+    console.log('✅ games.js: Functions exported to global scope');
+} catch (e) {
+    console.warn('Error exporting functions to global scope:', e);
+}

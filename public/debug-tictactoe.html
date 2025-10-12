@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Отладка: Крестики-нолики</title>
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/buttons.css">
+    <link rel="stylesheet" href="css/games.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .debug-panel {
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .debug-panel h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .game-state-display {
+            background: #fff;
+            border: 1px solid #ccc;
+            padding: 10px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .control-buttons {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .control-buttons button {
+            padding: 8px 16px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .control-buttons button:hover {
+            background: #0056b3;
+        }
+        .control-buttons button.secondary {
+            background: #6c757d;
+        }
+        .control-buttons button.secondary:hover {
+            background: #545b62;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Отладка: Крестики-нолики</h1>
+
+    <div class="control-buttons">
+        <button id="startLocalBtn">🎮 Начать локальную игру</button>
+        <button id="startBotBtn">🤖 Игра с ботом</button>
+        <button id="resetBtn" class="secondary">🔄 Сбросить игру</button>
+        <button id="logStateBtn" class="secondary">📊 Лог состояния</button>
+    </div>
+
+    <div id="activeGameContent">
+        <p>Выберите режим игры выше</p>
+    </div>
+
+    <div class="debug-panel">
+        <h3>Отладочная информация</h3>
+        <div class="game-state-display" id="debugInfo">
+            Игра не запущена
+        </div>
+    </div>
+
+    <script type="module">
+        // Импортируем модули игры
+        import { TicTacToeGame } from './js/modules/games/TicTacToeGame.js';
+        import { BaseGame } from './js/modules/core/BaseGame.js';
+
+        // Глобальные переменные для отладки
+        window.debugGame = null;
+        window.debugMode = 'local'; // 'local' или 'bot'
+
+        // Функция для обновления отладочной информации
+        function updateDebugInfo() {
+            const debugEl = document.getElementById('debugInfo');
+            if (!window.debugGame) {
+                debugEl.textContent = 'Игра не запущена';
+                return;
+            }
+
+            const state = window.debugGame.gameState;
+            const info = `
+Игра: ${window.debugGame.gameType}
+Режим: ${window.debugMode}
+Текущий игрок: ${state.currentPlayer}
+Мой символ: ${window.debugGame.mySymbol}
+Символ противника: ${window.debugGame.opponentSymbol}
+Игра окончена: ${state.gameOver}
+Победитель: ${state.winner || 'нет'}
+
+Доска:
+${state.board.map(row => row.map(cell => cell || '-').join(' ')).join('\n')}
+
+Сетевая игра: ${window.debugGame.isNetworkGame}
+            `.trim();
+
+            debugEl.textContent = info;
+        }
+
+        // Обработчики кнопок
+        document.getElementById('startLocalBtn').addEventListener('click', () => {
+            console.log('Starting local TicTacToe game');
+            window.debugMode = 'local';
+
+            // Создаем игру
+            window.debugGame = new TicTacToeGame();
+            window.debugGame.currentOpponent = { type: 'player', name: 'Игрок 2', emoji: '👤' };
+
+            // Инициализируем
+            if (window.debugGame.init()) {
+                console.log('Local game initialized successfully');
+                updateDebugInfo();
+            } else {
+                console.error('Failed to initialize local game');
+            }
+        });
+
+        document.getElementById('startBotBtn').addEventListener('click', () => {
+            console.log('Starting TicTacToe game with bot');
+            window.debugMode = 'bot';
+
+            // Создаем игру
+            window.debugGame = new TicTacToeGame();
+            window.debugGame.currentOpponent = { type: 'bot', name: 'Бот', emoji: '🤖' };
+
+            // Инициализируем
+            if (window.debugGame.init()) {
+                console.log('Bot game initialized successfully');
+                updateDebugInfo();
+            } else {
+                console.error('Failed to initialize bot game');
+            }
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            if (window.debugGame) {
+                console.log('Resetting game');
+                // Сбрасываем состояние
+                window.debugGame.gameState = {
+                    board: window.debugGame.createEmptyBoard(),
+                    currentPlayer: 'X',
+                    gameOver: false,
+                    winner: null
+                };
+                window.debugGame.render();
+                updateDebugInfo();
+            }
+        });
+
+        document.getElementById('logStateBtn').addEventListener('click', () => {
+            console.log('Current game state:', window.debugGame);
+            updateDebugInfo();
+        });
+
+        // Глобальная функция для обработки кликов по клеткам
+        window.handleTicTacToeCellClick = function(row, col) {
+            console.log(`Cell clicked: [${row}, ${col}]`);
+            if (window.debugGame && window.debugGame.handleCellClick) {
+                window.debugGame.handleCellClick(row, col);
+                // Небольшая задержка для обновления состояния
+                setTimeout(updateDebugInfo, 100);
+            }
+        };
+
+        console.log('Debug page initialized');
+        updateDebugInfo();
+    </script>
+</body>
+</html>

@@ -1,0 +1,1596 @@
+/* Light Theme */
+
+/* Переопределяем переменные для светлой темы */
+body.light-theme {
+    --bg-primary: #f8f9fa;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #e9ecef;
+    --surface-glass: rgba(255, 255, 255, 0.8);
+    --surface-glass-strong: rgba(255, 255, 255, 0.95);
+    --surface-elevated: rgba(248, 249, 250, 0.9);
+    --grid-gradient: radial-gradient(circle at 0% 0%, rgba(0, 224, 255, 0.12), transparent 55%),
+                     radial-gradient(circle at 85% 15%, rgba(255, 64, 129, 0.1), transparent 55%),
+                     linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(248, 249, 250, 0.95));
+    --card-gradient: linear-gradient(160deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 249, 250, 0.95) 100%);
+    --text-primary: #212529;
+    --text-secondary: #6c757d;
+    --text-muted: #868e96;
+    --text-heading: #343a40;
+    --accent-primary: #00d4ff;
+    --accent-secondary: #e83e8c;
+    --accent-gradient: linear-gradient(135deg, rgba(0, 212, 255, 0.9), rgba(232, 62, 140, 0.9));
+    --accent-soft: rgba(0, 212, 255, 0.15);
+    --accent-glow: 0 0 20px rgba(0, 212, 255, 0.4);
+    --accent-gradient-soft: linear-gradient(145deg, rgba(0, 212, 255, 0.7), rgba(232, 62, 140, 0.65));
+    --shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --shadow-strong: 0 8px 24px rgba(0, 0, 0, 0.12);
+    --border-subtle: rgba(0, 0, 0, 0.08);
+    --border-strong: rgba(0, 0, 0, 0.12);
+    --border-highlight: rgba(0, 212, 255, 0.4);
+    --surface-overlay: rgba(255, 255, 255, 0.6);
+    --chat-self: linear-gradient(150deg, rgba(0, 212, 255, 0.4), rgba(0, 212, 255, 0.2));
+    --chat-peer: linear-gradient(150deg, rgba(232, 62, 140, 0.35), rgba(248, 249, 250, 0.95));
+    --backdrop-blur: blur(20px);
+    --blur-medium: blur(20px);
+    --blur-strong: blur(30px);
+    --accent-self: rgba(0, 212, 255, 0.2);
+    --accent-other: rgba(232, 62, 140, 0.15);
+    --card-bg: linear-gradient(150deg, #ffffff, #f6f8ff);
+    --card-border: rgba(0, 0, 0, 0.12);
+    --card-text: #212529;
+    --card-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+    --card-hover-shadow: 0 12px 26px rgba(0, 0, 0, 0.18);
+}
+
+/* Корректировки для светлой темы */
+body.light-theme {
+    background: radial-gradient(circle at 20% -10%, rgba(0, 212, 255, 0.08), transparent 65%),
+                radial-gradient(circle at 85% 120%, rgba(232, 62, 140, 0.06), transparent 70%),
+                linear-gradient(160deg, #f8f9fa, #ffffff 35%, #f1f3f4);
+}
+
+body.light-theme::before {
+    background: radial-gradient(circle at 30% -10%, rgba(0, 212, 255, 0.1), transparent 60%),
+                radial-gradient(circle at 80% 110%, rgba(232, 62, 140, 0.08), transparent 60%);
+    opacity: 0.6;
+}
+
+body.light-theme::after {
+    background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAQAAADZc7J/AAAAKElEQVR4Ae3PQQEAAAjDsMO/q0MhkG7gA74TAAAAAAAAAADAtwANiQABvE1ewQAAAABJRU5ErkJggg==");
+    opacity: 0.03;
+}
+
+/* Хедер в светлой теме */
+body.light-theme .app-header {
+    background: var(--surface-glass-strong);
+    backdrop-filter: var(--backdrop-blur);
+    border-bottom: 1px solid var(--border-subtle);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .logo {
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+body.light-theme .logo-icon {
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+}
+
+body.light-theme .connection-indicator {
+    background: var(--surface-overlay);
+    border: 1px solid var(--border-subtle);
+}
+
+body.light-theme .header-btn {
+    background: var(--surface-overlay);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+}
+
+body.light-theme .header-btn::before {
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.08), rgba(232, 62, 140, 0.08));
+}
+
+/* Светлая тема для индикатора соединения */
+body.light-theme #connectionIndicator .connection-dot {
+    background-color: #ffcc00;
+    border-color: rgba(0, 0, 0, 0.2);
+}
+
+body.light-theme #connectionIndicator.connected .connection-dot {
+    background-color: #4caf50;
+    border-color: rgba(76, 175, 80, 0.3);
+}
+
+body.light-theme #connectionIndicator.disconnected .connection-dot {
+    background-color: #f44336;
+    border-color: rgba(244, 67, 54, 0.3);
+}
+
+/* Панели в светлой теме */
+body.light-theme .panel {
+    background: var(--surface-glass);
+    backdrop-filter: var(--backdrop-blur) saturate(150%);
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-soft);
+}
+
+body.light-theme .panel::before {
+    background: radial-gradient(circle at top left, rgba(0, 212, 255, 0.08), transparent 55%),
+                radial-gradient(circle at bottom right, rgba(232, 62, 140, 0.06), transparent 60%);
+}
+
+body.light-theme .panel:hover {
+    border-color: var(--border-highlight);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    transform: translateY(-3px);
+}
+
+body.light-theme .panel-header {
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Видео плеер в светлой теме */
+body.light-theme #playerContainer {
+    background: radial-gradient(circle at 50% 50%, rgba(0, 212, 255, 0.08), rgba(0, 0, 0, 0.1));
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-soft);
+}
+
+body.light-theme #playerContainer:hover {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 30px rgba(0, 212, 255, 0.2);
+}
+
+/* Кнопки в светлой теме */
+body.light-theme button,
+body.light-theme .action-btn,
+body.light-theme .back-btn,
+body.light-theme .close-btn,
+body.light-theme .game-mode-btn,
+body.light-theme .opponent-option,
+body.light-theme .invitation-actions button,
+body.light-theme .durak-controls button,
+body.light-theme .poker-controls button,
+body.light-theme .chess-controls button,
+body.light-theme .card[onclick],
+body.light-theme .card.playable,
+body.light-theme .card.selected,
+body.light-theme .new-game-btn,
+body.light-theme .copy-btn,
+body.light-theme .speed-control {
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid var(--border-subtle);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    color: var(--text-primary);
+}
+
+body.light-theme button::before,
+body.light-theme .action-btn::before,
+body.light-theme .back-btn::before,
+body.light-theme .close-btn::before,
+body.light-theme .game-mode-btn::before,
+body.light-theme .opponent-option::before,
+body.light-theme .invitation-actions button::before,
+body.light-theme .durak-controls button::before,
+body.light-theme .poker-controls button::before,
+body.light-theme .chess-controls button::before,
+body.light-theme .card[onclick]::before,
+body.light-theme .card.playable::before,
+body.light-theme .card.selected::before,
+body.light-theme .new-game-btn::before,
+body.light-theme .copy-btn::before,
+body.light-theme .speed-control::before {
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.12), rgba(232, 62, 140, 0.12));
+}
+
+body.light-theme button:hover,
+body.light-theme .action-btn:hover,
+body.light-theme .back-btn:hover,
+body.light-theme .close-btn:hover,
+body.light-theme .game-mode-btn:hover,
+body.light-theme .opponent-option:hover,
+body.light-theme .invitation-actions button:hover,
+body.light-theme .durak-controls button:hover,
+body.light-theme .poker-controls button:hover,
+body.light-theme .chess-controls button:hover,
+body.light-theme .card[onclick]:hover,
+body.light-theme .card.playable:hover,
+body.light-theme .card.selected:hover,
+body.light-theme .new-game-btn:hover,
+body.light-theme .copy-btn:hover,
+body.light-theme .speed-control:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border-color: var(--accent-primary);
+}
+
+body.light-theme button:active,
+body.light-theme .action-btn:active,
+body.light-theme .back-btn:active,
+body.light-theme .close-btn:active,
+body.light-theme .game-mode-btn:active,
+body.light-theme .opponent-option:active,
+body.light-theme .invitation-actions button:active,
+body.light-theme .durak-controls button:active,
+body.light-theme .poker-controls button:active,
+body.light-theme .chess-controls button:active,
+body.light-theme .card[onclick]:active,
+body.light-theme .card.playable:active,
+body.light-theme .card.selected:active,
+body.light-theme .new-game-btn:active,
+body.light-theme .copy-btn:active,
+body.light-theme .speed-control:active {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+/* Специфические кнопки в светлой теме */
+body.light-theme .secondary,
+body.light-theme .back-btn,
+body.light-theme .close-btn,
+body.light-theme .invitation-actions .decline-btn {
+    background: rgba(248, 249, 250, 0.8);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+}
+
+body.light-theme .secondary:hover,
+body.light-theme .back-btn:hover,
+body.light-theme .close-btn:hover,
+body.light-theme .invitation-actions .decline-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--border-strong);
+}
+
+body.light-theme .ghost {
+    background: var(--surface-overlay);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+}
+
+body.light-theme .ghost:hover {
+    color: var(--text-primary);
+    border-color: var(--border-highlight);
+}
+
+/* Чат в светлой теме */
+body.light-theme .chat-messages {
+    background: rgba(248, 249, 250, 0.8);
+    border: 1px solid var(--border-subtle);
+    box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.03);
+}
+
+body.light-theme .chat-message-avatar {
+    background: var(--accent-soft);
+    border: 2px solid var(--accent-primary);
+}
+
+body.light-theme .chat-message-bubble {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .chat-input-group textarea {
+    background: rgba(248, 249, 250, 0.6);
+    border: 1px solid var(--border-subtle);
+}
+
+body.light-theme .chat-input-group textarea:focus {
+    background: rgba(255, 255, 255, 0.9);
+}
+
+/* Карточки игр в светлой теме */
+body.light-theme .game-card {
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.9), rgba(248, 249, 250, 0.95));
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-soft);
+}
+
+body.light-theme .game-card:hover {
+    border-color: var(--accent-primary);
+    box-shadow: 0 8px 20px rgba(0, 212, 255, 0.15);
+}
+
+body.light-theme .game-card::after {
+    background: radial-gradient(circle at top, rgba(0, 212, 255, 0.1), transparent 65%);
+}
+
+/* Формы в светлой теме */
+body.light-theme input,
+body.light-theme textarea,
+body.light-theme select {
+    background: rgba(248, 249, 250, 0.8);
+    border: 1px solid var(--border-subtle);
+    box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.02);
+}
+
+body.light-theme input:hover,
+body.light-theme textarea:hover,
+body.light-theme select:hover {
+    border-color: var(--accent-primary);
+}
+
+body.light-theme input:focus,
+body.light-theme textarea:focus,
+body.light-theme select:focus {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.15);
+    background: rgba(255, 255, 255, 0.95);
+}
+
+/* Плавающее окно камеры в светлой теме */
+body.light-theme .floating-cam {
+    background: linear-gradient(165deg, rgba(255, 255, 255, 0.95), rgba(248, 249, 250, 0.9));
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-strong);
+}
+
+body.light-theme .fc-header {
+    background: rgba(248, 249, 250, 0.8);
+}
+
+/* Модальные окна в светлой теме */
+body.light-theme .modal-content {
+    background: var(--surface-glass-strong);
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-strong);
+}
+
+body.light-theme .modal-header {
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Уведомления в светлой теме */
+body.light-theme .notification {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Плавающий статус подключения в светлой теме */
+body.light-theme .connection-status {
+    background-color: var(--surface-glass-strong);
+    backdrop-filter: var(--backdrop-blur);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Индикатор загрузки в светлой теме */
+body.light-theme .error-message {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Предупреждения в светлой теме */
+body.light-theme .protocol-warning .warning-content,
+body.light-theme .mobile-warning .warning-content {
+    background: var(--surface-glass-strong);
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-strong);
+}
+
+/* Специфические элементы игр в светлой теме */
+body.light-theme .chess-board {
+    border: 4px solid #4a90e2;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    background: linear-gradient(135deg, #f5f5f5, #e8e8e8);
+}
+
+body.light-theme .ttt-board {
+    gap: 8px;
+}
+
+body.light-theme .ttt-cell {
+    background: var(--surface-glass);
+    border: 2px solid var(--border-subtle);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+body.light-theme .ttt-cell:hover {
+    background: var(--surface-glass-strong);
+    border-color: var(--accent-primary);
+}
+
+/* Корректировка для скроллбаров в светлой теме */
+body.light-theme .right-panel::-webkit-scrollbar-thumb,
+body.light-theme .chat-messages::-webkit-scrollbar-thumb,
+body.light-theme .chat-input-group textarea::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+/* Корректировка для контроллов видео в светлой теме */
+body.light-theme .controls-bar {
+    background: linear-gradient(120deg, rgba(255, 255, 255, 0.85), rgba(248, 249, 250, 0.65));
+    backdrop-filter: var(--blur-medium);
+    border: 1px solid var(--border-subtle);
+    box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.02);
+}
+
+body.light-theme .progress-container {
+    background: rgba(0, 0, 0, 0.08);
+}
+
+body.light-theme .time-display {
+    background: rgba(248, 249, 250, 0.6);
+    border: 1px solid var(--border-subtle);
+}
+
+/* Заголовки в светлой теме */
+body.light-theme h1,
+body.light-theme h2,
+body.light-theme h3,
+body.light-theme h4,
+body.light-theme h5,
+body.light-theme h6 {
+    color: var(--text-heading);
+}
+
+/* Параграфы в светлой теме */
+body.light-theme p,
+body.light-theme span,
+body.light-theme li {
+    color: var(--text-secondary);
+}
+
+/* Светлая тема для шахматной доски */
+body.light-theme .chess-board {
+    border: 4px solid #4a90e2;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    background: linear-gradient(135deg, #f5f5f5, #e8e8e8);
+}
+
+body.light-theme .chess-cell.light {
+    background: linear-gradient(135deg, #f0d9b5, #e8d1a8);
+    color: #2c1810;
+}
+
+body.light-theme .chess-cell.dark {
+    background: linear-gradient(135deg, #b58863, #a67c52);
+    color: #f5f5dc;
+}
+
+/* Светлая тема для карточных игр */
+body.light-theme .cards-container {
+    background: linear-gradient(135deg, rgba(248, 249, 250, 0.95), rgba(233, 236, 239, 0.98));
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-theme .cards-table {
+    background: rgba(248, 249, 250, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .poker-game,
+body.light-theme .durak-game {
+    background: linear-gradient(135deg, rgba(248, 249, 250, 0.95), rgba(233, 236, 239, 0.98));
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-theme .poker-center,
+body.light-theme .durak-table {
+    background: rgba(248, 249, 250, 0.6);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .game-info {
+    background: rgba(248, 249, 250, 0.6);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .cards-hand {
+    background: rgba(248, 249, 250, 0.4);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+body.light-theme .poker-table {
+    background: rgba(248, 249, 250, 0.7);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Светлая тема для выбора соперника */
+body.light-theme .opponent-list {
+    background: rgba(248, 249, 250, 0.9);
+    border-radius: var(--radius-lg);
+}
+
+body.light-theme .opponent-option {
+    background: rgba(255, 255, 255, 0.8);
+    border: 2px solid rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .opponent-option:hover {
+    background: rgba(0, 212, 255, 0.05);
+    border-color: rgba(0, 212, 255, 0.3);
+}
+
+body.light-theme .opponent-avatar {
+    background: rgba(0, 212, 255, 0.1);
+    border: 2px solid rgba(0, 212, 255, 0.2);
+}
+
+body.light-theme .no-players {
+    background: rgba(248, 249, 250, 0.8);
+    border: 2px dashed rgba(0, 0, 0, 0.06);
+}
+
+/* Светлая тема для приглашений в игру */
+body.light-theme .invitation-content {
+    background: rgba(248, 249, 250, 0.9);
+    border-radius: var(--radius-lg);
+}
+
+body.light-theme .invitation-actions .accept-btn {
+    background: linear-gradient(135deg, #28a745, #20c997);
+}
+
+body.light-theme .invitation-actions .accept-btn:hover {
+    background: linear-gradient(135deg, #20c997, #17a2b8);
+}
+
+body.light-theme .invitation-actions .decline-btn {
+    background: rgba(248, 249, 250, 0.8);
+    color: var(--text-primary);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-theme .invitation-actions .decline-btn:hover {
+    background: rgba(248, 249, 250, 0.9);
+    border-color: #dc3545;
+    color: #dc3545;
+}
+
+/* Светлая тема для уведомлений */
+body.light-theme .notification {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Светлая тема для предупреждений */
+body.light-theme .protocol-warning .warning-content,
+body.light-theme .mobile-warning .warning-content {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+body.light-theme .protocol-warning {
+    background: rgba(248, 249, 250, 0.6);
+}
+
+/* Светлая тема для модальных окон */
+body.light-theme .modal-overlay {
+    background: rgba(248, 249, 250, 0.8);
+    backdrop-filter: blur(16px);
+}
+
+body.light-theme .modal-content {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+body.light-theme .modal-header {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Светлая тема для информационных панелей в играх */
+body.light-theme .game-opponent-info {
+    background: rgba(248, 249, 250, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .opponent-avatar-small {
+    background: rgba(0, 212, 255, 0.1);
+    border: 2px solid rgba(0, 212, 255, 0.2);
+}
+
+/* Светлая тема для статуса игры */
+body.light-theme .game-status,
+body.light-theme .chess-status {
+    background: rgba(248, 249, 250, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Светлая тема для элементов управления */
+body.light-theme .ttt-score {
+    background: rgba(248, 249, 250, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .score-item {
+    background: rgba(248, 249, 250, 0.4);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+/* Дополнительные улучшения для светлой темы */
+
+/* Улучшенная видимость кнопок в светлой теме */
+body.light-theme .action-btn,
+body.light-theme .back-btn,
+body.light-theme .close-btn,
+body.light-theme .game-mode-btn {
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .action-btn {
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.9), rgba(232, 62, 140, 0.9));
+    color: #ffffff;
+    border: 1px solid rgba(0, 212, 255, 0.4);
+    box-shadow: 0 8px 24px rgba(0, 212, 255, 0.25);
+}
+
+body.light-theme .action-btn:hover {
+    filter: brightness(1.05);
+    box-shadow: 0 12px 32px rgba(0, 212, 255, 0.35);
+}
+
+body.light-theme .back-btn,
+body.light-theme .close-btn {
+    background: rgba(248, 249, 250, 0.8);
+    color: var(--text-secondary);
+}
+
+body.light-theme .back-btn:hover,
+body.light-theme .close-btn:hover {
+    background: rgba(248, 249, 250, 0.9);
+    color: var(--text-primary);
+    border-color: rgba(0, 0, 0, 0.12);
+}
+
+/* Улучшенная видимость крестиков-ноликов в светлой теме */
+body.light-theme .ttt-cell {
+    background: rgba(255, 255, 255, 0.8);
+    border: 2px solid rgba(0, 0, 0, 0.08);
+    box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.03);
+}
+
+body.light-theme .ttt-cell:hover {
+    background: rgba(0, 212, 255, 0.05);
+    border-color: rgba(0, 212, 255, 0.3);
+}
+
+/* Стиль для заблокированных клеток в крестиках-ноликах */
+.ttt-cell.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: rgba(128, 128, 128, 0.1) !important;
+    border-color: rgba(128, 128, 128, 0.3) !important;
+}
+
+body.light-theme .ttt-cell.disabled {
+    opacity: 0.3;
+    background: rgba(200, 200, 200, 0.2) !important;
+    border-color: rgba(200, 200, 200, 0.4) !important;
+}
+
+body.light-theme .ttt-cell.x {
+    color: red;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+body.light-theme .ttt-cell.o {
+    color: blue;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* Улучшенная видимость шахматных фигур в светлой теме */
+body.light-theme .chess-cell.light .white-piece,
+body.light-theme .chess-cell.dark .white-piece {
+    color: #ffffff;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8),
+                 0 0 8px rgba(0, 0, 0, 0.5);
+    filter: drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.7));
+}
+
+body.light-theme .chess-cell.light .black-piece,
+body.light-theme .chess-cell.dark .black-piece {
+    color: #1a1a1a;
+    text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.3),
+                 0 0 4px rgba(255, 255, 255, 0.2);
+    filter: drop-shadow(1px 1px 1px rgba(255, 255, 255, 0.3));
+}
+
+/* Заблокированные фигуры в светлой теме */
+body.light-theme .disabled-piece {
+    opacity: 0.2;
+    filter: grayscale(100%) blur(0.5px) brightness(0.8);
+}
+
+/* Улучшенная видимость рубашки карт в светлой теме */
+body.light-theme .card-back {
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.8), rgba(74, 144, 226, 0.8));
+    color: #ffffff;
+    border: 2px solid rgba(0, 212, 255, 0.6);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* Улучшенная видимость козыря в светлой теме */
+body.light-theme .trump-suit {
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.8), rgba(74, 144, 226, 0.8));
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 212, 255, 0.3);
+}
+
+/* Улучшенная видимость кнопок в модальных окнах в светлой теме */
+body.light-theme .invitation-actions button,
+body.light-theme .opponent-option {
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .invitation-actions .accept-btn {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: #ffffff;
+    border: 1px solid rgba(40, 167, 69, 0.4);
+    box-shadow: 0 8px 24px rgba(40, 167, 69, 0.25);
+}
+
+body.light-theme .invitation-actions .decline-btn {
+    background: rgba(248, 249, 250, 0.8);
+    color: var(--text-secondary);
+}
+
+body.light-theme .invitation-actions .decline-btn:hover {
+    background: rgba(248, 249, 250, 0.9);
+    color: #dc3545;
+    border-color: rgba(220, 53, 69, 0.3);
+}
+
+/* Улучшенная видимость уведомлений в светлой теме */
+body.light-theme .notification {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(10px);
+}
+
+/* Улучшенная видимость сообщений об ошибках в светлой теме */
+body.light-theme .error-message {
+    background-color: #ff6b6b;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+}
+
+body.light-theme .connection-status {
+    background-color: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .connection-dot {
+    background-color: #ffcc00;
+}
+
+body.light-theme .connection-status.connected .connection-dot {
+    background-color: #4caf50;
+}
+
+body.light-theme .connection-status.disconnected .connection-dot {
+    background-color: #f44336;
+}
+
+/* Улучшенная видимость комнаты в светлой теме */
+body.light-theme .room-id {
+    background: rgba(248, 249, 250, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.03);
+}
+
+body.light-theme .copy-btn {
+    background: rgba(0, 212, 255, 0.1);
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    color: var(--accent-primary);
+}
+
+body.light-theme .copy-btn:hover {
+    background: rgba(0, 212, 255, 0.2);
+    box-shadow: 0 4px 12px rgba(0, 212, 255, 0.15);
+}
+
+/* Светлая тема для #gameContainer */
+body.light-theme #gameContainer {
+    color: var(--text-primary);
+}
+
+body.light-theme #gameContainer h2 {
+    color: var(--text-primary);
+}
+
+body.light-theme #gameContainer p {
+    color: var(--text-secondary);
+}
+
+/* Светлая тема для game-status */
+body.light-theme .game-status {
+    background: rgba(248, 249, 250, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    color: var(--text-primary);
+}
+
+/* Светлая тема для poker-game */
+body.light-theme .poker-game {
+    background: linear-gradient(135deg, rgba(248, 249, 250, 0.95), rgba(233, 236, 239, 0.98));
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-theme .poker-game h3 {
+    color: var(--text-primary);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Светлая тема для poker-center */
+body.light-theme .poker-center {
+    background: rgba(248, 249, 250, 0.6);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Светлая тема для durak-game */
+body.light-theme .durak-game {
+    background: linear-gradient(135deg, rgba(248, 249, 250, 0.95), rgba(233, 236, 239, 0.98));
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-theme .durak-game h3 {
+    color: var(--text-primary);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Светлая тема для durak-table */
+body.light-theme .durak-table {
+    background: rgba(248, 249, 250, 0.6);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Светлая тема для game-info */
+body.light-theme .game-info {
+    background: rgba(248, 249, 250, 0.6);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .game-info > div {
+    color: var(--text-primary);
+}
+
+/* Светлая тема для cards-table */
+body.light-theme .cards-table {
+    background: rgba(248, 249, 250, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Светлая тема для cards-hand */
+body.light-theme .cards-hand {
+    background: rgba(248, 249, 250, 0.4);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+/* Светлая тема для floating-cam */
+body.light-theme .floating-cam {
+    background: linear-gradient(165deg, rgba(255, 255, 255, 0.95), rgba(248, 249, 250, 0.9));
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Светлая тема для fc-header */
+body.light-theme .fc-header {
+    background: rgba(248, 249, 250, 0.8);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .fc-header-title {
+    color: var(--text-primary);
+}
+
+/* Светлая тема для кнопок в fc-header-actions */
+body.light-theme .fc-header-actions button {
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-theme .fc-header-actions button:hover {
+    background: rgba(248, 249, 250, 0.9);
+}
+
+/* Светлая тема для volume-control */
+body.light-theme .fc-header-actions .volume-label {
+    color: var(--text-secondary);
+}
+
+/* Светлая тема для chess-status */
+body.light-theme .chess-status {
+    background: linear-gradient(135deg, rgba(248, 249, 250, 0.8), rgba(233, 236, 239, 0.6));
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Светлая тема для ttt-score */
+body.light-theme .ttt-score {
+    background: rgba(248, 249, 250, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Светлая тема для score-item */
+body.light-theme .score-item {
+    background: rgba(248, 249, 250, 0.4);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+/* Светлая тема для chat-messages */
+body.light-theme .chat-messages {
+    background: rgba(248, 249, 250, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Светлая тема для chat-input-group textarea */
+body.light-theme .chat-input-group textarea {
+    background: rgba(248, 249, 250, 0.6);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .chat-input-group textarea:focus {
+    background: rgba(255, 255, 255, 0.9);
+}
+
+/* Светлая тема для url-input input */
+body.light-theme .url-input input {
+    background: rgba(248, 249, 250, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .url-input input:focus {
+    background: rgba(255, 255, 255, 0.95);
+}
+
+/* Светлая тема для pip-prompt */
+body.light-theme .pip-prompt {
+    background: rgba(248, 249, 250, 0.9);
+}
+
+/* Светлая тема для about-hero */
+body.light-theme .about-hero {
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(232, 62, 140, 0.1));
+}
+
+/* Светлая тема для feature-item */
+body.light-theme .feature-item {
+    background: var(--surface-glass);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .feature-item:hover {
+    border-color: var(--accent-primary);
+    box-shadow: 0 12px 32px rgba(0, 212, 255, 0.15);
+}
+
+body.light-theme .feature-item h4 {
+    color: var(--text-primary);
+}
+
+body.light-theme .feature-item p {
+    color: var(--text-secondary);
+}
+
+/* Светлая тема для about-tech h4 */
+body.light-theme .about-tech h4 {
+    color: var(--text-primary);
+}
+
+/* Светлая тема для about-footer */
+body.light-theme .about-footer {
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .about-footer p {
+    color: var(--text-secondary);
+}
+
+/* Светлая тема для mobile-warning */
+body.light-theme .mobile-warning .warning-content {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+body.light-theme .mobile-warning h3 {
+    color: var(--accent-primary);
+}
+
+body.light-theme .mobile-warning ul {
+    color: var(--text-secondary);
+}
+
+body.light-theme .mobile-warning li {
+    color: var(--text-secondary);
+}
+
+/* Светлая тема для cards-menu */
+body.light-theme .cards-menu {
+    background: linear-gradient(135deg, rgba(248, 249, 250, 0.95), rgba(233, 236, 239, 0.98));
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+body.light-theme .cards-menu h3 {
+    color: var(--text-primary);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+body.light-theme .game-selection {
+    background: rgba(248, 249, 250, 0.8);
+    border-radius: var(--radius-lg);
+}
+
+body.light-theme .rules-section {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .rules-section h4 {
+    color: var(--accent-primary);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+body.light-theme .rules-section ul {
+    color: var(--text-secondary);
+}
+
+/* Светлая тема для room-id */
+body.light-theme .room-id {
+    background: rgba(248, 249, 250, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.03);
+}
+
+/* Светлая тема для copy-btn */
+body.light-theme .copy-btn {
+    background: rgba(0, 212, 255, 0.1);
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    color: var(--accent-primary);
+}
+
+body.light-theme .copy-btn:hover {
+    background: rgba(0, 212, 255, 0.2);
+    box-shadow: 0 4px 12px rgba(0, 212, 255, 0.15);
+}
+
+/* Светлая тема для game-card */
+body.light-theme .game-card {
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.9), rgba(248, 249, 250, 0.95));
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: var(--shadow-soft);
+}
+
+body.light-theme .game-card::after {
+    background: radial-gradient(circle at top, rgba(0, 212, 255, 0.1), transparent 65%);
+}
+
+body.light-theme .game-card:hover {
+    border-color: rgba(0, 212, 255, 0.4);
+    box-shadow: 0 8px 20px rgba(0, 212, 255, 0.15);
+}
+
+body.light-theme .game-description {
+    color: var(--text-secondary);
+}
+
+/* Светлая тема для #gameContainer */
+body.light-theme #gameContainer {
+    color: var(--text-primary);
+}
+
+body.light-theme #gameContainer h2 {
+    color: var(--text-primary);
+}
+
+body.light-theme #gameContainer p {
+    color: var(--text-secondary);
+}
+
+/* Светлая тема для game-status */
+body.light-theme .game-status {
+    background: rgba(248, 249, 250, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    color: var(--text-primary);
+}
+
+/* Светлая тема для poker-game */
+body.light-theme .poker-game {
+    background: linear-gradient(135deg, rgba(248, 249, 250, 0.95), rgba(233, 236, 239, 0.98));
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-theme .poker-game h3 {
+    color: var(--text-primary);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Светлая тема для poker-center */
+body.light-theme .poker-center {
+    background: rgba(248, 249, 250, 0.6);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Светлая тема для durak-game */
+body.light-theme .durak-game {
+    background: linear-gradient(135deg, rgba(248, 249, 250, 0.95), rgba(233, 236, 239, 0.98));
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-theme .durak-game h3 {
+    color: var(--text-primary);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Светлая тема для durak-table */
+body.light-theme .durak-table {
+    background: rgba(248, 249, 250, 0.6);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Светлая тема для game-info */
+body.light-theme .game-info {
+    background: rgba(248, 249, 250, 0.6);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .game-info > div {
+    color: var(--text-primary);
+}
+
+/* Светлая тема для cards-table */
+body.light-theme .cards-table {
+    background: rgba(248, 249, 250, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Светлая тема для cards-hand */
+body.light-theme .cards-hand {
+    background: rgba(248, 249, 250, 0.4);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+/* Светлая тема для floating-cam */
+body.light-theme .floating-cam {
+    background: linear-gradient(165deg, rgba(255, 255, 255, 0.95), rgba(248, 249, 250, 0.9));
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Светлая тема для fc-header */
+body.light-theme .fc-header {
+    background: rgba(248, 249, 250, 0.8);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .fc-header-title {
+    color: var(--text-primary);
+}
+
+/* Светлая тема для кнопок в fc-header-actions */
+body.light-theme .fc-header-actions button {
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-theme .fc-header-actions button:hover {
+    background: rgba(248, 249, 250, 0.9);
+}
+
+/* Светлая тема для volume-control */
+body.light-theme .fc-header-actions .volume-label {
+    color: var(--text-secondary);
+}
+
+/* Светлая тема для chess-status */
+body.light-theme .chess-status {
+    background: linear-gradient(135deg, rgba(248, 249, 250, 0.8), rgba(233, 236, 239, 0.6));
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Светлая тема для ttt-score */
+body.light-theme .ttt-score {
+    background: rgba(248, 249, 250, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Светлая тема для score-item */
+body.light-theme .score-item {
+    background: rgba(248, 249, 250, 0.4);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+/* Светлая тема для chat-messages */
+body.light-theme .chat-messages {
+    background: rgba(248, 249, 250, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Светлая тема для chat-input-group textarea */
+body.light-theme .chat-input-group textarea {
+    background: rgba(248, 249, 250, 0.6);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .chat-input-group textarea:focus {
+    background: rgba(255, 255, 255, 0.9);
+}
+
+/* Светлая тема для url-input input */
+body.light-theme .url-input input {
+    background: rgba(248, 249, 250, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .url-input input:focus {
+    background: rgba(255, 255, 255, 0.95);
+}
+
+/* Светлая тема для pip-prompt */
+body.light-theme .pip-prompt {
+    background: rgba(248, 249, 250, 0.9);
+}
+
+/* Светлая тема для about-hero */
+body.light-theme .about-hero {
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(232, 62, 140, 0.1));
+}
+
+/* Светлая тема для feature-item */
+body.light-theme .feature-item {
+    background: var(--surface-glass);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .feature-item:hover {
+    border-color: var(--accent-primary);
+    box-shadow: 0 12px 32px rgba(0, 212, 255, 0.15);
+}
+
+body.light-theme .feature-item h4 {
+    color: var(--text-primary);
+}
+
+body.light-theme .feature-item p {
+    color: var(--text-secondary);
+}
+
+/* Светлая тема для about-tech h4 */
+body.light-theme .about-tech h4 {
+    color: var(--text-primary);
+}
+
+/* Светлая тема для about-footer */
+body.light-theme .about-footer {
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .about-footer p {
+    color: var(--text-secondary);
+}
+
+/* Светлая тема для mobile-warning */
+body.light-theme .mobile-warning .warning-content {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+body.light-theme .mobile-warning h3 {
+    color: var(--accent-primary);
+}
+
+body.light-theme .mobile-warning ul {
+    color: var(--text-secondary);
+}
+
+body.light-theme .mobile-warning li {
+    color: var(--text-secondary);
+}
+
+/* Светлая тема для cards-menu */
+body.light-theme .cards-menu {
+    background: linear-gradient(135deg, rgba(248, 249, 250, 0.95), rgba(233, 236, 239, 0.98));
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+body.light-theme .cards-menu h3 {
+    color: var(--text-primary);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+body.light-theme .game-selection {
+    background: rgba(248, 249, 250, 0.8);
+    border-radius: var(--radius-lg);
+}
+
+body.light-theme .rules-section {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .rules-section h4 {
+    color: var(--accent-primary);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+body.light-theme .rules-section ul {
+    color: var(--text-secondary);
+}
+
+/* Светлая тема для room-id */
+body.light-theme .room-id {
+    background: rgba(248, 249, 250, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.03);
+}
+
+/* Светлая тема для copy-btn */
+body.light-theme .copy-btn {
+    background: rgba(0, 212, 255, 0.1);
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    color: var(--accent-primary);
+}
+
+body.light-theme .copy-btn:hover {
+    background: rgba(0, 212, 255, 0.2);
+    box-shadow: 0 4px 12px rgba(0, 212, 255, 0.15);
+}
+
+/* Светлая тема для game-card */
+body.light-theme .game-card {
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.9), rgba(248, 249, 250, 0.95));
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: var(--shadow-soft);
+}
+
+body.light-theme .game-card::after {
+    background: radial-gradient(circle at top, rgba(0, 212, 255, 0.1), transparent 65%);
+}
+
+body.light-theme .game-card:hover {
+    border-color: rgba(0, 212, 255, 0.4);
+    box-shadow: 0 8px 20px rgba(0, 212, 255, 0.15);
+}
+
+body.light-theme .game-description {
+    color: var(--text-secondary);
+}
+
+/* Светлая тема для #gameContainer */
+body.light-theme #gameContainer {
+    color: var(--text-primary);
+}
+
+body.light-theme #gameContainer h2 {
+    color: var(--text-primary);
+}
+
+body.light-theme #gameContainer p {
+    color: var(--text-secondary);
+}
+
+/* Светлая тема для game-status */
+body.light-theme .game-status {
+    background: rgba(248, 249, 250, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    color: var(--text-primary);
+}
+
+/* Светлая тема для poker-game */
+body.light-theme .poker-game {
+    background: linear-gradient(135deg, rgba(248, 249, 250, 0.95), rgba(233, 236, 239, 0.98));
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-theme .poker-game h3 {
+    color: var(--text-primary);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Светлая тема для poker-center */
+body.light-theme .poker-center {
+    background: rgba(248, 249, 250, 0.6);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Светлая тема для durak-game */
+body.light-theme .durak-game {
+    background: linear-gradient(135deg, rgba(248, 249, 250, 0.95), rgba(233, 236, 239, 0.98));
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-theme .durak-game h3 {
+    color: var(--text-primary);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Светлая тема для durak-table */
+body.light-theme .durak-table {
+    background: rgba(248, 249, 250, 0.6);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Светлая тема для game-info */
+body.light-theme .game-info {
+    background: rgba(248, 249, 250, 0.6);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .game-info > div {
+    color: var(--text-primary);
+}
+
+/* Светлая тема для cards-table */
+body.light-theme .cards-table {
+    background: rgba(248, 249, 250, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Светлая тема для cards-hand */
+body.light-theme .cards-hand {
+    background: rgba(248, 249, 250, 0.4);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+/* Светлая тема для floating-cam */
+body.light-theme .floating-cam {
+    background: linear-gradient(165deg, rgba(255, 255, 255, 0.95), rgba(248, 249, 250, 0.9));
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Светлая тема для fc-header */
+body.light-theme .fc-header {
+    background: rgba(248, 249, 250, 0.8);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .fc-header-title {
+    color: var(--text-primary);
+}
+
+/* Светлая тема для кнопок в fc-header-actions */
+body.light-theme .fc-header-actions button {
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.light-theme .fc-header-actions button:hover {
+    background: rgba(248, 249, 250, 0.9);
+}
+
+/* Светлая тема для volume-control */
+body.light-theme .fc-header-actions .volume-label {
+    color: var(--text-secondary);
+}
+
+/* Светлая тема для chess-status */
+body.light-theme .chess-status {
+    background: linear-gradient(135deg, rgba(248, 249, 250, 0.8), rgba(233, 236, 239, 0.6));
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Светлая тема для ttt-score */
+body.light-theme .ttt-score {
+    background: rgba(248, 249, 250, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Светлая тема для score-item */
+body.light-theme .score-item {
+    background: rgba(248, 249, 250, 0.4);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+/* Светлая тема для chat-messages */
+body.light-theme .chat-messages {
+    background: rgba(248, 249, 250, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Светлая тема для chat-input-group textarea */
+body.light-theme .chat-input-group textarea {
+    background: rgba(248, 249, 250, 0.6);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .chat-input-group textarea:focus {
+    background: rgba(255, 255, 255, 0.9);
+}
+
+/* Светлая тема для url-input input */
+body.light-theme .url-input input {
+    background: rgba(248, 249, 250, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .url-input input:focus {
+    background: rgba(255, 255, 255, 0.95);
+}
+
+/* Светлая тема для pip-prompt */
+body.light-theme .pip-prompt {
+    background: rgba(248, 249, 250, 0.9);
+}
+
+/* Светлая тема для about-hero */
+body.light-theme .about-hero {
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(232, 62, 140, 0.1));
+}
+
+/* Светлая тема для feature-item */
+body.light-theme .feature-item {
+    background: var(--surface-glass);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .feature-item:hover {
+    border-color: var(--accent-primary);
+    box-shadow: 0 12px 32px rgba(0, 212, 255, 0.15);
+}
+
+body.light-theme .feature-item h4 {
+    color: var(--text-primary);
+}
+
+body.light-theme .feature-item p {
+    color: var(--text-secondary);
+}
+
+/* Светлая тема для about-tech h4 */
+body.light-theme .about-tech h4 {
+    color: var(--text-primary);
+}
+
+/* Светлая тема для about-footer */
+body.light-theme .about-footer {
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .about-footer p {
+    color: var(--text-secondary);
+}
+
+/* Светлая тема для mobile-warning */
+body.light-theme .mobile-warning .warning-content {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+body.light-theme .mobile-warning h3 {
+    color: var(--accent-primary);
+}
+
+body.light-theme .mobile-warning ul {
+    color: var(--text-secondary);
+}
+
+body.light-theme .mobile-warning li {
+    color: var(--text-secondary);
+}
+
+/* Светлая тема для cards-menu */
+body.light-theme .cards-menu {
+    background: linear-gradient(135deg, rgba(248, 249, 250, 0.95), rgba(233, 236, 239, 0.98));
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+body.light-theme .cards-menu h3 {
+    color: var(--text-primary);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+body.light-theme .game-selection {
+    background: rgba(248, 249, 250, 0.8);
+    border-radius: var(--radius-lg);
+}
+
+body.light-theme .rules-section {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .rules-section h4 {
+    color: var(--accent-primary);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+body.light-theme .rules-section ul {
+    color: var(--text-secondary);
+}

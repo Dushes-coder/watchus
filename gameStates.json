@@ -1,0 +1,192 @@
+{
+  "qwerty": {
+    "gameType": "durak",
+    "deck": [
+      {
+        "suit": "♥",
+        "value": "10",
+        "power": 10
+      },
+      {
+        "suit": "♠",
+        "value": "J",
+        "power": 11
+      },
+      {
+        "suit": "♣",
+        "value": "K",
+        "power": 13
+      },
+      {
+        "suit": "♠",
+        "value": "6",
+        "power": 6
+      },
+      {
+        "suit": "♥",
+        "value": "9",
+        "power": 9
+      },
+      {
+        "suit": "♣",
+        "value": "9",
+        "power": 9
+      },
+      {
+        "suit": "♥",
+        "value": "7",
+        "power": 7
+      },
+      {
+        "suit": "♠",
+        "value": "K",
+        "power": 13
+      },
+      {
+        "suit": "♦",
+        "value": "A",
+        "power": 14
+      },
+      {
+        "suit": "♥",
+        "value": "J",
+        "power": 11
+      },
+      {
+        "suit": "♣",
+        "value": "10",
+        "power": 10
+      },
+      {
+        "suit": "♣",
+        "value": "6",
+        "power": 6
+      },
+      {
+        "suit": "♦",
+        "value": "6",
+        "power": 6
+      },
+      {
+        "suit": "♦",
+        "value": "K",
+        "power": 13
+      },
+      {
+        "suit": "♦",
+        "value": "7",
+        "power": 7
+      },
+      {
+        "suit": "♥",
+        "value": "K",
+        "power": 13
+      },
+      {
+        "suit": "♦",
+        "value": "Q",
+        "power": 12
+      },
+      {
+        "suit": "♥",
+        "value": "A",
+        "power": 14
+      },
+      {
+        "suit": "♥",
+        "value": "8",
+        "power": 8
+      },
+      {
+        "suit": "♣",
+        "value": "8",
+        "power": 8
+      },
+      {
+        "suit": "♠",
+        "value": "8",
+        "power": 8
+      },
+      {
+        "suit": "♠",
+        "value": "10",
+        "power": 10
+      }
+    ],
+    "player1Hand": [
+      {
+        "suit": "♦",
+        "value": "10",
+        "power": 10
+      },
+      {
+        "suit": "♦",
+        "value": "J",
+        "power": 11
+      },
+      {
+        "suit": "♥",
+        "value": "6",
+        "power": 6
+      },
+      {
+        "suit": "♥",
+        "value": "Q",
+        "power": 12
+      },
+      {
+        "suit": "♦",
+        "value": "8",
+        "power": 8
+      },
+      {
+        "suit": "♦",
+        "value": "9",
+        "power": 9
+      }
+    ],
+    "player2Hand": [
+      {
+        "suit": "♣",
+        "value": "Q",
+        "power": 12
+      },
+      {
+        "suit": "♠",
+        "value": "A",
+        "power": 14
+      },
+      {
+        "suit": "♣",
+        "value": "A",
+        "power": 14
+      },
+      {
+        "suit": "♣",
+        "value": "7",
+        "power": 7
+      },
+      {
+        "suit": "♣",
+        "value": "J",
+        "power": 11
+      },
+      {
+        "suit": "♠",
+        "value": "Q",
+        "power": 12
+      }
+    ],
+    "attackingCards": [],
+    "defendingCards": [],
+    "trumpSuit": "♦",
+    "currentAttacker": "player2",
+    "gamePhase": "attack",
+    "winner": null,
+    "players": [
+      "N2Xb73qO_0bU0zs6AAAd",
+      "7jBaHtKtVEecb9oDAAAb"
+    ],
+    "gameStarted": true
+  }
+}

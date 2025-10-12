@@ -1,0 +1,473 @@
+// ===== POKER GAME CLASS =====
+
+// Класс для игры в покер
+class PokerGame extends CardGame {
+    constructor() {
+        super('poker');
+        this.round = 1;
+        this.maxRounds = 10;
+        this.playerScore = 0;
+        this.opponentScore = 0;
+        this.gamePhase = 'exchange'; // 'exchange', 'waiting', 'finished'
+    }
+
+    // Инициализация игры
+    init() {
+        try {
+            console.log('PokerGame.init() called');
+            if (!super.init()) {
+                console.log('PokerGame.init(): super.init() failed');
+                return false;
+            }
+            console.log('PokerGame.init(): super.init() success, container found:', !!this.container);
+
+            if (this.isNetworkGame) {
+                // Для сетевой игры состояние приходит с сервера
+                console.log('PokerGame.init(): Network game detected');
+                this.setupPlayerMapping();
+                
+                // Подписываемся на обновления состояния игры
+                if (this.socket && this.roomId) {
+                    this.socket.on('game-state', (gameState) => {
+                        console.log('PokerGame: Received game state update:', gameState);
+                        this.gameState = gameState;
+                        this.render();
+                    });
+                }
+                
+                return true;
+            }
+
+            // Локальная игра (с ботом)
+            this.gameState = {
+                gameMode: 'poker',
+                deck: [],
+                playerHand: [],
+                opponentHand: [],
+                playerScore: 0,
+                opponentScore: 0,
+                currentPlayer: 'player',
+                round: 1,
+                gamePhase: 'discard',
+                winner: null
+            };
+
+            // Устанавливаем mapping игроков для сетевой игры
+            this.setupPlayerMapping();
+
+            // Создаем колоду и раздаем карты
+            this.createDeck();
+            this.shuffleDeck();
+            this.dealCards();
+
+            console.log('PokerGame.init(): calling render');
+            this.render();
+            console.log('PokerGame.init(): render completed');
+
+            return true;
+        } catch (error) {
+            console.error('PokerGame.init(): Error during initialization:', error);
+            return false;
+        }
+    }
+
+    // Настройка mapping игроков
+    setupPlayerMapping() {
+        if (this.socket && this.roomId && this.currentOpponent?.type === 'player') {
+            this.isNetworkGame = true;
+            this.gameState.players = [this.socket.id, this.currentOpponent.id];
+            this.gamePlayerMapping = {
+                [this.gameState.players[0]]: 'player1',
+                [this.gameState.players[1]]: 'player2'
+            };
+        }
+    }
+
+    // Настройка символов игроков (для совместимости с InvitationManager)
+    setupPlayerSymbols() {
+        this.setupPlayerMapping();
+    }
+
+    // Раздача карт
+    dealCards() {
+        this.gameState.playerHand = [];
+        this.gameState.opponentHand = [];
+
+        for (let i = 0; i < 5; i++) {
+            if (this.deck.length > 0) this.gameState.playerHand.push(this.deck.pop());
+            if (this.deck.length > 0) this.gameState.opponentHand.push(this.deck.pop());
+        }
+    }
+
+    // Рендеринг игры
+    render() {
+        let html = this.renderOpponentInfo();
+        html += '<div class="poker-game">';
+        html += '<h3>🃏 Покер</h3>';
+        html += '<div class="game-info">';
+        html += `<div>Раунд: <strong>${this.gameState.round}</strong></div>`;
+        html += `<div>Ваш счёт: ${this.gameState.playerScore}</div>`;
+        html += `<div>Счёт противника: ${this.gameState.opponentScore}</div>`;
+        html += '</div>';
+
+        // Определяем, какие руки показывать
+        let playerCards = [];
+        let opponentCards = [];
+
+        if (this.isNetworkGame) {
+            // В сетевой игре определяем руки по ролям
+            const currentPlayerRole = this.getCurrentPlayerRole();
+            if (currentPlayerRole === 'player1') {
+                playerCards = this.gameState.player1Hand || [];
+                opponentCards = this.gameState.player2Hand || [];
+            } else {
+                playerCards = this.gameState.player2Hand || [];
+                opponentCards = this.gameState.player1Hand || [];
+            }
+        } else {
+            // Локальная игра с ботом
+            playerCards = this.gameState.playerHand || [];
+            opponentCards = this.gameState.opponentHand || [];
+        }
+            if (this.gameState.gamePhase === 'waiting' || this.gameState.gamePhase === 'finished') {
+                // Показываем открытые карты после проверки
+                const suitClass = this.getSuitClass(card.suit);
+                html += `<div class="card ${suitClass} revealed">`;
+                html += `<div class="card-value">${card.value}</div>`;
+                html += `<div class="card-suit">${card.suit}</div>`;
+                html += '</div>';
+            } else {
+                // Закрытые карты
+                html += '<div class="card card-back">🂠</div>';
+            }
+        }
+        html += '</div></div>';
+
+        // Центральная область
+        html += '<div class="poker-center">';
+        if (this.gameState.gamePhase === 'finished') {
+            const winner = this.gameState.winner;
+            html += '<div class="game-result">';
+            if (winner === 'player') {
+                html += '<div style="color: #28a745; font-size: 24px; font-weight: bold;">🎉 Вы выиграли игру!</div>';
+            } else if (winner === 'opponent') {
+                html += '<div style="color: #dc3545; font-size: 24px; font-weight: bold;">😞 Противник выиграл игру!</div>';
+            } else {
+                html += '<div style="color: #ffc107; font-size: 24px; font-weight: bold;">🤝 Ничья в игре!</div>';
+            }
+            html += '<div style="margin-top: 10px;">Игра окончена. Первый, кто набрал 10 очков, побеждает!</div>';
+            html += '</div>';
+        } else if (this.gameState.gamePhase === 'waiting') {
+            // Показываем стол с картами
+            html += '<div class="poker-table">';
+            html += '<div class="table-title">Сравнение комбинаций</div>';
+
+            // Карты игрока на столе
+            html += '<div class="table-player-cards">';
+            html += '<div class="player-label">Ваши карты:</div>';
+            html += '<div class="table-cards-row">';
+            this.gameState.playerHand.forEach((card, i) => {
+                const suitClass = this.getSuitClass(card.suit);
+                html += `<div class="card ${suitClass} on-table">`;
+                html += `<div class="card-value">${card.value}</div>`;
+                html += `<div class="card-suit">${card.suit}</div>`;
+                html += '</div>';
+            });
+            html += '</div></div>';
+
+            // Карты противника на столе
+            html += '<div class="table-opponent-cards">';
+            html += '<div class="opponent-label">Карты противника:</div>';
+            html += '<div class="table-cards-row">';
+            this.gameState.opponentHand.forEach((card, i) => {
+                const suitClass = this.getSuitClass(card.suit);
+                html += `<div class="card ${suitClass} on-table">`;
+                html += `<div class="card-value">${card.value}</div>`;
+                html += `<div class="card-suit">${card.suit}</div>`;
+                html += '</div>';
+            });
+            html += '</div></div></div>';
+
+            // Статус
+            html += '<div class="poker-status">Определяем победителя...</div>';
+        } else if (this.gameState.gamePhase === 'exchange') {
+            html += '<div class="poker-status">Выберите карты для обмена или проверьте комбинацию</div>';
+        }
+        html += '</div>';
+
+        // Карты игрока
+        html += '<div class="player-cards">';
+        html += '<h4>Ваши карты:</h4>';
+        html += '<div class="cards-hand player-hand">';
+        this.gameState.playerHand.forEach((card, i) => {
+            const suitClass = this.getSuitClass(card.suit);
+            const selectedClass = card.selected ? ' selected' : '';
+            html += `<div class="card ${suitClass}${selectedClass}" data-index="${i}" onclick="window.gameManager.getCurrentGame().handleCardClick(${i})">`;
+            html += `<div class="card-value">${card.value}</div>`;
+            html += `<div class="card-suit">${card.suit}</div>`;
+            html += '</div>';
+        });
+        html += '</div></div>';
+
+        // Кнопки управления
+        html += '<div class="poker-controls">';
+        if (this.gameState.gamePhase === 'finished') {
+            html += '<button onclick="window.gameManager.getCurrentGame().startNewGame()" class="action-btn">🎮 Новая игра</button>';
+        } else if (this.gameState.gamePhase === 'exchange') {
+            html += '<button onclick="window.gameManager.getCurrentGame().exchangeCards()" class="action-btn">Обменять выбранные</button>';
+            html += '<button onclick="window.gameManager.getCurrentGame().checkHand()" class="action-btn">Проверить комбинацию</button>';
+            html += '<button onclick="window.gameManager.getCurrentGame().nextRound()" class="action-btn">Новый раунд</button>';
+        } else if (this.gameState.gamePhase === 'waiting') {
+            html += '<button disabled class="action-btn" style="opacity: 0.5;">Подготовка...</button>';
+        }
+        html += '<button onclick="window.gameManager.closeCurrentGame()" class="back-btn">Назад к меню</button>';
+        html += '</div>';
+
+        html += '</div>';
+
+        console.log('PokerGame.render(): setting innerHTML, html length:', html.length);
+        this.container.innerHTML = html;
+        this.container.style.display = 'block'; // Показываем контейнер
+        console.log('PokerGame.render(): container displayed');
+        this.addCardHandlers();
+        console.log('PokerGame.render(): addCardHandlers completed');
+    }
+
+    // Добавление обработчиков для карт
+    addCardHandlers() {
+        // Обработчики добавляются через onclick в HTML
+    }
+
+    // Обработка клика по карте
+    handleCardClick(index) {
+        if (this.gameState.gamePhase !== 'exchange') return;
+
+        const card = this.gameState.playerHand[index];
+        if (card) {
+            card.selected = !card.selected;
+            this.render();
+        }
+    }
+
+    // Обмен карт
+    exchangeCards() {
+        const selectedCards = this.gameState.playerHand.filter(card => card.selected);
+
+        if (selectedCards.length === 0) {
+            this.showNotification('Выберите карты для обмена', 'warning');
+            return;
+        }
+
+        selectedCards.forEach(card => {
+            const index = this.gameState.playerHand.indexOf(card);
+            if (index !== -1 && this.deck.length > 0) {
+                this.gameState.playerHand[index] = this.deck.pop();
+            }
+            card.selected = false;
+        });
+
+        this.showNotification('Карты обменяны! Теперь проверьте комбинацию.', 'success');
+        this.render();
+    }
+
+    // Проверка комбинации
+    checkHand() {
+        if (this.isNetworkGame) {
+            this.sendMove({ action: 'check' });
+        }
+
+        const playerCombination = this.getPokerCombination(this.gameState.playerHand);
+
+        // Бот тоже может обменять карты
+        if (this.currentOpponent?.type === 'bot') {
+            this.makeBotExchange();
+        }
+
+        const opponentCombination = this.getPokerCombination(this.gameState.opponentHand);
+
+        // Определяем победителя
+        let result = '';
+        if (playerCombination.rank > opponentCombination.rank) {
+            result = 'Вы выиграли раунд!';
+            this.gameState.playerScore++;
+        } else if (playerCombination.rank < opponentCombination.rank) {
+            result = 'Противник выиграл раунд!';
+            this.gameState.opponentScore++;
+        } else {
+            result = 'Ничья в раунде!';
+        }
+
+        // Проверяем окончание игры
+        if (this.gameState.playerScore >= this.maxRounds) {
+            this.gameState.gamePhase = 'finished';
+            this.gameState.winner = 'player';
+            this.endGame('player');
+        } else if (this.gameState.opponentScore >= this.maxRounds) {
+            this.gameState.gamePhase = 'finished';
+            this.gameState.winner = 'opponent';
+            this.endGame('opponent');
+        } else {
+            this.gameState.gamePhase = 'waiting';
+        }
+
+        this.gameState.lastResult = {
+            playerCombination,
+            opponentCombination,
+            result
+        };
+
+        // Показываем результат через 2 секунды
+        this.render();
+        setTimeout(() => {
+            this.showResult();
+        }, 2000);
+    }
+
+    // Получение покерной комбинации
+    getPokerCombination(hand) {
+        const values = hand.map(card => card.power).sort((a, b) => a - b);
+        const suits = hand.map(card => card.suit);
+
+        // Проверяем комбинации
+        const isFlush = suits.every(suit => suit === suits[0]);
+        const isStraight = values.every((val, i) => i === 0 || val === values[i-1] + 1);
+
+        const valueCounts = {};
+        values.forEach(val => valueCounts[val] = (valueCounts[val] || 0) + 1);
+        const counts = Object.values(valueCounts).sort((a, b) => b - a);
+
+        if (isFlush && isStraight) return { name: 'Стрит-флеш', rank: 8 };
+        if (counts[0] === 4) return { name: 'Каре', rank: 7 };
+        if (counts[0] === 3 && counts[1] === 2) return { name: 'Фул-хаус', rank: 6 };
+        if (isFlush) return { name: 'Флеш', rank: 5 };
+        if (isStraight) return { name: 'Стрит', rank: 4 };
+        if (counts[0] === 3) return { name: 'Тройка', rank: 3 };
+        if (counts[0] === 2 && counts[1] === 2) return { name: 'Две пары', rank: 2 };
+        if (counts[0] === 2) return { name: 'Пара', rank: 1 };
+        return { name: 'Старшая карта', rank: 0 };
+    }
+
+    // Обмен карт бота
+    makeBotExchange() {
+        if (this.currentOpponent?.type !== 'bot') return;
+
+        const hand = this.gameState.opponentHand;
+        const combination = this.getPokerCombination(hand);
+
+        // Если у бота хорошая комбинация, не меняем
+        if (combination.rank >= 2) return;
+
+        // Меняем 1-3 карты
+        const cardsToChange = Math.floor(Math.random() * 3) + 1;
+        const changedIndices = [];
+
+        for (let i = 0; i < cardsToChange; i++) {
+            let randomIndex;
+            do {
+                randomIndex = Math.floor(Math.random() * hand.length);
+            } while (changedIndices.includes(randomIndex));
+
+            changedIndices.push(randomIndex);
+
+            if (this.deck.length > 0) {
+                this.gameState.opponentHand[randomIndex] = this.deck.pop();
+            }
+        }
+    }
+
+    // Показ результата
+    showResult() {
+        if (!this.gameState.lastResult) return;
+
+        const { playerCombination, opponentCombination, result } = this.gameState.lastResult;
+
+        let statusHtml = `
+            <div style="margin-bottom: 10px;"><strong>Результат раунда ${this.gameState.round}:</strong></div>
+            <div>Ваша комбинация: <span style="color: var(--accent-primary);">${playerCombination.name}</span></div>
+            <div>Комбинация противника: <span style="color: var(--accent-primary);">${opponentCombination.name}</span></div>
+            <div style="margin-top: 20px; font-size: 32px; font-weight: bold; color: ${result.includes('Вы выиграли') ? '#28a745' : result.includes('Противник выиграл') ? '#dc3545' : '#ffc107'};">${result.includes('Вы выиграли') ? 'ПОБЕДА!' : result.includes('Противник выиграл') ? 'ПОРАЖЕНИЕ!' : 'НИЧЬЯ!'}</div>
+            <div style="margin-top: 10px; color: #666;">Новый раунд через 3 секунды...</div>
+        `;
+
+        const statusElement = this.container.querySelector('.poker-status');
+        if (statusElement) {
+            statusElement.innerHTML = statusHtml;
+        }
+
+        // Автоматически переходим к следующему раунду
+        setTimeout(() => {
+            this.nextRound();
+        }, 3000);
+    }
+
+    // Следующий раунд
+    nextRound() {
+        if (this.gameState.gamePhase === 'finished') {
+            this.startNewGame();
+            return;
+        }
+
+        this.gameState.round++;
+        this.gameState.gamePhase = 'exchange';
+
+        // Создаем новую колоду и раздаем карты
+        this.createDeck();
+        this.shuffleDeck();
+        this.dealCards();
+
+        this.render();
+    }
+
+    // Новая игра
+    startNewGame() {
+        this.gameState = {
+            gameMode: 'poker',
+            deck: [],
+            playerHand: [],
+            opponentHand: [],
+            playerScore: 0,
+            opponentScore: 0,
+            currentPlayer: 'player',
+            round: 1,
+            gamePhase: 'exchange',
+            winner: null
+        };
+
+        this.createDeck();
+        this.shuffleDeck();
+        this.dealCards();
+        this.render();
+        this.showNotification('🎮 Начата новая игра в покер!', 'info');
+    }
+
+    // Обработка сетевых ходов
+    handleNetworkMove(move) {
+        const { action, cardIndex, playerId } = move;
+
+        if (action === 'exchange' && cardIndex !== undefined) {
+            const isCurrentPlayer = playerId === this.socket?.id;
+
+            if (isCurrentPlayer) {
+                if (this.deck.length > 0) {
+                    this.gameState.playerHand[cardIndex] = this.deck.pop();
+                }
+            } else {
+                if (this.deck.length > 0) {
+                    this.gameState.opponentHand[cardIndex] = this.deck.pop();
+                }
+            }
+
+            this.render();
+            this.showNotification(`Игрок обменял карту`, 'info');
+        } else if (action === 'check') {
+            // Запускаем проверку
+            this.checkHand();
+        }
+    }
+}
+
+// Экспорт класса для ES6 модулей
+export { PokerGame };
+
+// Экспорт класса в глобальную область
+window.PokerGame = PokerGame;

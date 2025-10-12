@@ -1,4 +1,4 @@
-/* client.js — клиентская логика для Watch Together
+/* client.js — клиентская логика для TogetherPlay
 	Поддерживает: join-room, load-video, player-event (play/pause/seek) и chat-message.
 	Пока реализована полноценная поддержка HTML5 <video>. YouTube — только загрузка iframe; для точного управления
 	requires подключение YouTube IFrame API (YT.Player).
@@ -288,6 +288,15 @@ function renderCardsGame() {
     html += '</div>';
 
     container.innerHTML = html;
+}
+
+// Вспомогательные функции для отображения карт
+function getCardSymbol(card) {
+    return card.value + card.suit;
+}
+
+function getSuitSymbol(suit) {
+    return suit;
 }
 
 function playCard(suit, value, index) {

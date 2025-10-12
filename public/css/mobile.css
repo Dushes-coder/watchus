@@ -1,0 +1,607 @@
+/* Mobile Styles */
+
+/* ===== АДАПТИВНАЯ ВЕРСТКА ===== */
+
+/* Планшеты (768px - 1024px) */
+@media (max-width: 1024px) {
+    .main-layout {
+        grid-template-columns: 1fr 280px;
+        gap: 20px;
+    }
+
+    .panel {
+        padding: 18px;
+    }
+
+    .games-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+    }
+
+    .game-card {
+        padding: 20px;
+    }
+
+    .floating-cam {
+        width: 280px;
+        height: auto;
+    }
+
+    .panel:hover {
+        margin-bottom: 20px; /* Отступ для планшетов */
+    }
+}
+
+/* Маленькие планшеты и большие мобильные (600px - 767px) */
+@media (max-width: 767px) {
+    :root {
+        --panel-radius: 16px;
+        --tile-radius: 14px;
+        --radius-sm: 10px;
+        --radius-md: 14px;
+        --radius-lg: 16px;
+        --radius-xl: 20px;
+    }
+
+    .app-header {
+        padding: 8px 16px;
+    }
+
+    .header-content {
+        padding: 8px 12px;
+    }
+
+    .logo {
+        font-size: 16px;
+        gap: 8px;
+    }
+
+    .logo-icon {
+        font-size: 22px;
+    }
+
+    .header-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+    }
+
+    /* Изменяем layout на вертикальный */
+    .main-layout {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        padding: 72px 12px 16px;
+        max-width: none;
+    }
+
+    .left-panel {
+        order: 1;
+    }
+
+    .right-panel {
+        order: 2;
+        max-height: none;
+        margin-top: 0;
+    }
+
+    .panel:hover {
+        margin-bottom: 16px; /* Меньший отступ на мобильных */
+    }
+
+    /* Видео плеер на весь экран */
+    #playerContainer {
+        height: 250px;
+        margin-bottom: 16px;
+    }
+
+    .panel {
+        padding: 16px;
+        margin-bottom: 12px;
+    }
+
+    .panel.compact {
+        padding: 12px;
+    }
+
+    .panel-header {
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+    }
+
+    .panel-title {
+        font-size: 18px;
+        gap: 8px;
+    }
+
+    .panel-title .icon {
+        font-size: 18px;
+    }
+
+    /* Чат */
+    .chat-messages {
+        max-height: 200px;
+    }
+
+    /* Игры */
+    .games-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .game-card {
+        padding: 16px;
+        aspect-ratio: 3/1;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .game-icon {
+        font-size: 32px;
+        margin: 0;
+    }
+
+    .game-title {
+        font-size: 16px;
+        margin: 0 0 4px 0;
+    }
+
+    .game-description {
+        font-size: 13px;
+        margin: 0;
+    }
+
+    /* Плавающее окно камеры */
+    .floating-cam {
+        position: fixed;
+        bottom: 16px;
+        right: 16px;
+        width: 240px;
+        height: 180px;
+        z-index: 10000;
+    }
+
+    .fc-header {
+        padding: 8px 10px;
+    }
+
+    .fc-header-title {
+        font-size: 12px;
+    }
+
+    .fc-header-actions button {
+        width: 24px;
+        height: 24px;
+        font-size: 11px;
+    }
+
+    /* Кнопки управления плеером */
+    .controls-bar {
+        padding: 12px 16px;
+        gap: 8px;
+    }
+
+    .control-group {
+        gap: 8px;
+    }
+
+    .player-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 18px;
+    }
+
+    /* Модальные окна */
+    .modal-content {
+        margin: 20px;
+        max-width: none;
+        width: calc(100vw - 40px);
+    }
+
+    /* Таблицы игр */
+    .ttt-board {
+        grid-template-columns: repeat(3, 50px);
+        grid-template-rows: repeat(3, 50px);
+        gap: 6px;
+    }
+
+    .ttt-cell {
+        width: 50px;
+        height: 50px;
+        font-size: 32px;
+    }
+
+    .chess-board {
+        grid-template-columns: repeat(8, 45px);
+        grid-template-rows: repeat(8, 45px);
+    }
+
+    .chess-cell {
+        width: 45px;
+        height: 45px;
+        font-size: 35px;
+    }
+
+    /* Карты */
+    .card {
+        width: 50px;
+        height: 70px;
+        font-size: 14px;
+    }
+
+    .card-suit {
+        font-size: 18px;
+    }
+
+    .cards-hand {
+        gap: 6px;
+        padding: 10px;
+    }
+
+    /* Кнопки */
+    button {
+        min-height: 44px; /* Для touch устройств */
+        padding: 12px 16px;
+    }
+
+    .secondary, .ghost {
+        padding: 10px 14px;
+    }
+
+    /* Формы */
+    input, textarea, select {
+        min-height: 44px;
+        padding: 12px 16px;
+    }
+
+    /* Уведомления */
+    .notification {
+        margin: 16px;
+        max-width: calc(100vw - 32px);
+    }
+}
+
+/* Маленькие мобильные (<600px) */
+@media (max-width: 599px) {
+    :root {
+        --panel-radius: 12px;
+        --tile-radius: 12px;
+        --radius-sm: 8px;
+        --radius-md: 12px;
+        --radius-lg: 14px;
+        --radius-xl: 16px;
+    }
+
+    .app-header {
+        padding: 6px 12px;
+    }
+
+    .header-content {
+        gap: 8px;
+    }
+
+    .logo {
+        font-size: 14px;
+    }
+
+    .logo-icon {
+        font-size: 20px;
+    }
+
+    .header-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 12px;
+    }
+
+    .main-layout {
+        padding: 64px 8px 16px;
+        gap: 12px;
+    }
+
+    #playerContainer {
+        height: 200px;
+        margin-bottom: 12px;
+    }
+
+    .panel {
+        padding: 12px;
+    }
+
+    .panel-header {
+        margin-bottom: 8px;
+    }
+
+    .panel-title {
+        font-size: 16px;
+    }
+
+    /* Чат */
+    .chat-messages {
+        max-height: 150px;
+    }
+
+    .chat-input-group textarea {
+        min-height: 40px;
+    }
+
+    #sendMsg {
+        min-height: 40px;
+        padding-inline: 20px;
+        font-size: 16px;
+    }
+
+    /* Игры */
+    .game-card {
+        padding: 12px;
+        gap: 12px;
+    }
+
+    .game-icon {
+        font-size: 28px;
+    }
+
+    .game-title {
+        font-size: 14px;
+    }
+
+    .game-description {
+        font-size: 12px;
+    }
+
+    /* Плавающее окно камеры */
+    .floating-cam {
+        width: 200px;
+        height: 150px;
+        bottom: 12px;
+        right: 12px;
+    }
+
+    .fc-header-actions {
+        gap: 2px;
+    }
+
+    .fc-header-actions button {
+        width: 20px;
+        height: 20px;
+        font-size: 10px;
+    }
+
+    .volume-control {
+        margin: 0 4px;
+    }
+
+    .fc-header-actions .volume-slider {
+        width: 50px;
+    }
+
+    /* Кнопки плеера */
+    .player-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
+    }
+
+    /* Модальные окна */
+    .modal-content {
+        margin: 16px;
+        width: calc(100vw - 32px);
+    }
+
+    .modal-header {
+        padding: 16px;
+    }
+
+    .modal-header h3 {
+        font-size: 18px;
+    }
+
+    /* Игровые доски */
+    .ttt-board {
+        grid-template-columns: repeat(3, 45px);
+        grid-template-rows: repeat(3, 45px);
+    }
+
+    .ttt-cell {
+        width: 45px;
+        height: 45px;
+        font-size: 28px;
+    }
+
+    .chess-board {
+        grid-template-columns: repeat(8, 35px);
+        grid-template-rows: repeat(8, 35px);
+    }
+
+    .chess-cell {
+        width: 35px;
+        height: 35px;
+        font-size: 28px;
+    }
+
+    /* Карты */
+    .card {
+        width: 45px;
+        height: 65px;
+        font-size: 12px;
+    }
+
+    .card-suit {
+        font-size: 16px;
+    }
+
+    /* Кнопки игр */
+    .action-btn, .back-btn, .close-btn, .game-mode-btn {
+        padding: 10px 16px;
+        font-size: 14px;
+    }
+
+    .secondary, .ghost {
+        padding: 8px 12px;
+        font-size: 14px;
+    }
+
+    /* Списки участников */
+    .participants-list {
+        max-height: 120px;
+    }
+
+    .participant-item {
+        padding: 8px 12px;
+        font-size: 14px;
+    }
+
+    /* Индикатор соединения */
+    .connection-indicator {
+        width: 32px;
+        height: 32px;
+        font-size: 12px;
+    }
+
+    .connection-dot {
+        width: 8px;
+        height: 8px;
+    }
+
+    .panel:hover {
+        margin-bottom: 12px; /* Минимальный отступ для маленьких экранов */
+    }
+}
+
+/* Очень маленькие экраны (<480px) */
+@media (max-width: 479px) {
+    .floating-cam {
+        width: 160px;
+        height: 120px;
+    }
+
+    .fc-header-title {
+        font-size: 10px;
+    }
+
+    #playerContainer {
+        height: 180px;
+    }
+
+    .modal-content {
+        margin: 12px;
+        width: calc(100vw - 24px);
+    }
+
+    .feature-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .about-hero {
+        padding: 24px 16px 20px;
+    }
+
+    .tech-stack {
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .tech-badge {
+        padding: 6px 12px;
+        font-size: 11px;
+    }
+
+    .panel:hover {
+        margin-bottom: 8px; /* Минимальный отступ для очень маленьких экранов */
+    }
+}
+
+/* Улучшения для touch устройств */
+@media (hover: none) and (pointer: coarse) {
+    .panel:hover,
+    .game-card:hover,
+    .header-btn:hover,
+    button:hover,
+    .opponent-option:hover,
+    .card:hover,
+    .chess-cell:hover,
+    .ttt-cell:hover {
+        transform: none;
+        box-shadow: none;
+    }
+
+    /* Увеличиваем touch targets */
+    .player-btn,
+    .header-btn,
+    button,
+    .card,
+    .chess-cell,
+    .ttt-cell,
+    .opponent-option {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    /* Убираем hover эффекты */
+    .panel::before {
+        display: none;
+    }
+}
+
+/* Пейзажная ориентация для мобильных */
+@media (max-height: 500px) and (orientation: landscape) {
+    .app-header {
+        padding: 4px 8px;
+    }
+
+    .main-layout {
+        padding: 48px 8px 8px;
+    }
+
+    #playerContainer {
+        height: 140px;
+    }
+
+    .floating-cam {
+        width: 180px;
+        height: 135px;
+    }
+
+    .panel {
+        padding: 8px;
+    }
+}
+
+/* Улучшенные стили для мобильных устройств */
+@media (max-width: 768px) {
+    .game-rules {
+        grid-template-columns: 1fr;
+    }
+
+    .game-selection {
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+    }
+
+    .poker-controls, .durak-controls {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .cards-hand {
+        gap: 8px;
+    }
+
+    .card {
+        width: 60px;
+        height: 85px;
+        font-size: 12px;
+    }
+
+    .card-suit {
+        font-size: 20px;
+    }
+
+    .table-cards {
+        gap: 15px;
+    }
+}

@@ -7,7 +7,7 @@
     <meta http-equiv="Expires" content="0">
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5" />
-    <title>Watch Together</title>
+    <title>TogetherPlay</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     
@@ -50,7 +50,7 @@
                 <div class="header-left">
                     <div class="logo">
                         <span class="logo-icon">🎬</span>
-                        <span class="logo-text">Watch Together</span>
+                        <span class="logo-text">TogetherPlay</span>
                     </div>
                 </div>
                 <div class="header-center">
@@ -202,10 +202,16 @@
                             <div class="game-description">Королевская игра</div>
                         </div>
 
-                        <div class="game-card" onclick="openGame('cards')">
+                        <div class="game-card" onclick="openGame('poker')">
                             <div class="game-icon">🃏</div>
-                            <div class="game-title">Карточные игры</div>
-                            <div class="game-description">Покер и Дурак</div>
+                            <div class="game-title">Покер</div>
+                            <div class="game-description">Игра на комбинации из 5 карт</div>
+                        </div>
+
+                        <div class="game-card" onclick="openGame('durak')">
+                            <div class="game-icon">🎴</div>
+                            <div class="game-title">Дурак</div>
+                            <div class="game-description">Классическая русская карточная игра</div>
                         </div>
                     </div>
                 </div>
@@ -312,14 +318,14 @@
     <div id="aboutModal" class="modal-overlay" aria-hidden="true" style="display: none;">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>О проекте Watch Together</h3>
+                <h3>О проекте TogetherPlay</h3>
                 <button id="closeAbout" class="secondary icon-btn" aria-label="Закрыть"></button>
             </div>
             <div class="about-content">
                 <div class="about-hero">
                     <div class="logo-large">
                         <span class="logo-icon-large">🎬</span>
-                        <h2>Watch Together</h2>
+                        <h2>TogetherPlay</h2>
                     </div>
                     <p class="about-description">
                         Современная платформа для совместного просмотра видео с друзьями в реальном времени.
@@ -342,7 +348,7 @@
                         <div class="feature-item">
                             <div class="feature-icon">🎮</div>
                             <h4>Мини-игры</h4>
-                            <p>Играйте в крестики-нолики, шахматы и карточные игры</p>
+                            <p>Играйте в крестики-нолики, шахматы, покер и дурак</p>
                         </div>
                         <div class="feature-item">
                             <div class="feature-icon">📹</div>

@@ -1,0 +1,381 @@
+/* Participants Styles */
+
+/* Room Participants List */
+.participants-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.participants-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.participants-list::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+    border-radius: 2px;
+}
+
+.participants-list::-webkit-scrollbar-thumb {
+    background: var(--accent-primary);
+    border-radius: 2px;
+}
+
+.participants-list::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-primary-hover);
+}
+
+.participant-count {
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.no-participants {
+    text-align: center;
+    padding: 20px 10px;
+    color: var(--text-secondary);
+}
+
+.no-participants-icon {
+    font-size: 32px;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.no-participants-text {
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.no-participants-subtext {
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+.participant-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin-bottom: 4px;
+    transition: background-color 0.2s ease;
+    cursor: pointer;
+}
+
+.participant-item:hover {
+    background: var(--bg-hover);
+}
+
+.participant-item.current-user {
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.participant-item.current-user:hover {
+    background: rgba(59, 130, 246, 0.15);
+}
+
+.participant-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+
+.participant-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.participant-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.participant-status {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.participant-item.current-user .participant-name {
+    color: var(--accent-primary);
+}
+
+.current-user-indicator {
+    font-size: 14px;
+    margin-left: 8px;
+    flex-shrink: 0;
+}
+
+.opponent-status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-left: 8px;
+    flex-shrink: 0;
+}
+
+.opponent-status-indicator.online {
+    background: #10b981;
+    box-shadow: 0 0 4px rgba(16, 185, 129, 0.4);
+}
+
+.opponent-status-indicator.busy {
+    background: #f59e0b;
+    box-shadow: 0 0 4px rgba(245, 158, 11, 0.4);
+}
+
+.opponent-item.available {
+    opacity: 1;
+}
+
+.opponent-item.busy {
+    opacity: 0.7;
+}
+
+/* Opponent Selector Sections */
+.opponent-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.opponent-section h4 {
+    margin: 0 0 12px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.bot-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Opponent Selector Modal */
+.opponent-selector .modal-content {
+    max-width: 500px;
+    width: 90%;
+}
+
+.opponent-modal .modal-header h3 {
+    color: var(--accent-primary);
+    margin: 0;
+    font-size: 24px;
+}
+
+.opponent-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 20px 0;
+}
+
+.opponent-option {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px 20px;
+    background: var(--bg-tertiary);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.opponent-option:hover {
+    background: var(--glass-hover);
+    border-color: var(--accent-primary);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.bot-option {
+    border-color: #28a745;
+}
+
+.bot-option:hover {
+    border-color: #20c997;
+    background: rgba(40, 167, 69, 0.1);
+}
+
+.opponent-avatar {
+    font-size: 32px;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-secondary);
+    border-radius: 50%;
+    border: 2px solid var(--border);
+}
+
+.opponent-info {
+    flex: 1;
+}
+
+.opponent-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.opponent-status {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.no-players {
+    text-align: center;
+    color: var(--text-secondary);
+    font-style: italic;
+    padding: 40px 20px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-lg);
+    border: 2px dashed var(--border);
+}
+
+/* Game Invitation Modal */
+.game-invitation .modal-content {
+    max-width: 400px;
+    width: 90%;
+}
+
+.invitation-modal .modal-header h3 {
+    color: var(--accent-primary);
+    margin: 0;
+    font-size: 20px;
+    text-align: center;
+}
+
+.invitation-content {
+    padding: 20px 0;
+    text-align: center;
+}
+
+.invitation-message {
+    margin-bottom: 25px;
+}
+
+.inviter {
+    font-size: 24px;
+    margin-bottom: 10px;
+    color: var(--text-primary);
+}
+
+.game-invite {
+    font-size: 16px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.invitation-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+.accept-btn {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    min-width: 120px;
+}
+
+.accept-btn:hover {
+    background: linear-gradient(135deg, #20c997, #17a2b8);
+}
+
+.decline-btn {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    min-width: 120px;
+}
+
+.decline-btn:hover {
+    background: var(--glass-hover);
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+/* Notifications */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 25px;
+    border-radius: var(--radius-lg);
+    color: white;
+    font-weight: 500;
+    font-size: 14px;
+    box-shadow: var(--shadow-lg);
+    z-index: 10000;
+    transform: translateX(400px);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    max-width: 300px;
+}
+
+.notification.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.notification.info {
+    background: linear-gradient(135deg, var(--accent-primary), #4a7de0);
+}
+
+.notification.success {
+    background: linear-gradient(135deg, #28a745, #20c997);
+}
+
+.notification.warning {
+    background: linear-gradient(135deg, #ffc107, #fd7e14);
+    color: #212529;
+}
+
+.notification.error {
+    background: linear-gradient(135deg, var(--danger), #e03c3c);
+}
+
+/* Opponent Info in Game */
+.game-opponent-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 15px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    margin-bottom: 15px;
+}
+
+.opponent-avatar-small {
+    font-size: 20px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    border: 2px solid rgba(0, 224, 255, 0.2);
+}
